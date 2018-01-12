@@ -13,36 +13,37 @@ console.log("Listening on port " + PORT); //DEBUG
 /* ************************* SERVER-FUNKTIONEN ****************************** */
 
 /* onClientConnected_ServerEvent
- *
+ * Reagiert auf die Anfrage eines Clients.
  */
-onClientConnected_ServerEvent = function(sock) {
+function onClientConnected_ServerEvent(sock) {
 	console.log("\nNeue Verbindung von: " + sock.remoteAddress); //DEBUG
 	logger.logInfo("Neue Verbindung von: " + sock.remoteAddress);
 
 	sock.on('data', function(data) { // Daten vom Client
 		// Request validieren
-		var requestArr = splitReuest(data);
-		var isHTTPHeader = isHTTPHeader(requestArr[0]);
-		var isParsable = validateRequest(requestArr[1]);
+		var requestArr = splitRequest(data);
+		var isHttp = isHTTPHeader(requestArr[0]);
+		var isParsable = isParsableRequest(requestArr[1]);
+
+		// HTTP-Header
+		var headers = new Map();
+		headers.set(200, 'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n');
+		headers.set(400, 'HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n');
 
 		if(!isParsable) {
-			if(isHTTPHeader) {
-				// HTTP-Header schreiben.
-				// TODO
-			}
 			console.log("Verbindung geschloßen!"); //DEBUG
 			logger.logInfo("Verbindung mit " + sock.remoteAddress + " geschloßen.");
-			sock.write('{"answer": "ERROR: NO JSON"}');
+			endConnection(sock, isHttp, headers.get(400), '{"answer": "ERROR: NO JSON"}');
 			return;
 		} else {
-			parseJSON(json, function(err, content) {
+			parseJSON(requestArr[1], function(err, content) {
 				if(err) {
 					console.error("\nKann JSON-Datei nicht parsen!"); //DEBUG
 					console.error("Inhalt: " + data); //DEBUG
 					console.error("Fehler: " + err + "\n"); //DEBUG
 					logger.logError("onClientConnected_ServerEvent",
 												"JSON konnte nicht geparst werden.");
-					sock.write('{"answer": "JSON NOT PARSABLE"}');
+					endConnection(sock, isHttp, headers.get(400), '{"answer": "JSON NOT PARSABLE"}');
 					return;
 				} else {
 					// JSON-Datei erforlgreich geparst.
@@ -57,12 +58,12 @@ onClientConnected_ServerEvent = function(sock) {
 								console.log("Neue Anfrage in der Warteschlange."); //DEBUG
 								console.log("Passwort: " + content.password); //DEBUG
 								for(var i = 0; i < 100; i++); //DEBUG
-								sock.write('{"answer": "WAITING FOR VA"}');
+								endConnection(sock, isHttp, headers.get(200), '{"answer": "WAITING FOR VA"}');
 							} else if(content.confirmation != undefined) {
 								logger.logInfo("Client hat paarung bestätigt.");
 								if(content.confirmation) {
 									console.log("Client will sich verbinden!"); //DEBUG
-									sock.write('{"answer": "PAIRING WITH VA"}');
+									endConnection(sock, isHttp, headers.get(200), '{"answer": "PAIRING WITH VA"}');
 								}
 							} else {
 								console.error("Unbekannte Anfrage des PC Client!"); //DEBUG
@@ -88,34 +89,40 @@ onClientConnected_ServerEvent = function(sock) {
 							console.error("Gerät: Unbekannt"); //DEBUG
 							logger.logError("onClientConnected_ServerEvent",
 														"Unbekanntes Gerät.");
-							sock.write('{"answer": "UNKNOWN DEVICE"}');
+							endConnection(sock, isHttp, headers.get(400), '{"answer": "UNKNOWN DEVICE"}');
 							return;
 					}
 				}
 			}); // Ende parseJSON
 		}
-
-
 	}); // ENDE socket 'connection'
 
 	// Client möchte die Verbindung beenden.
 	sock.on('end', function() {
-		console.log("\nClient möchte Verbindung schließen!"); // DEBUG
+		console.log("Client möchte Verbindung schließen!"); // DEBUG
 		logger.logInfo("Verbindung auf Anfrage von " + sock.remoteAddress
 										+ " geschloßen.");
 		sock.end();
 	}); // ENDE socket 'end'
 }
 
+function endConnection(socket, isHttp, httpHeader, data) {
+	if(isHttp){
+		socket.end(httpHeader + data);
+	} else {
+		socket.end(data);
+	}
+}
+
 
 /* ************************* HILFS-FUNKTIONEN ******************************* */
 
-/* splitReuest
+/* splitRequest
  * Liefert ein Array  mit zwei Elementen zurück.
  * Erstes Element ist der HTTP Header, zweites Element ist die JSON.
  * Im Fehlerfall ist eines oder sind beide Elemente '-1'.
  */
-function splitReuest(data) {
+function splitRequest(data) {
 		var splitArr = new Array();
 		splitArr.push('-1');
 		splitArr.push('-1');
@@ -141,13 +148,18 @@ function getJSON(data) {
 	var firstCurlyBracket = data.indexOf("{");
 	var lastCurlyBracket = data.lastIndexOf("}");
 
+	if(lastCurlyBracket == -1) {
+		// Fehler wenn die letzte geschlossene Klammer vin hinten gesucht werden soll
+		lastCurlyBracket = data.indexOf("}");
+	}
+
 	if(firstCurlyBracket == -1 || lastCurlyBracket == -1) {
 		// Keine JSON-Datei
 		return "-1";
 	}
 
 	// Alles vor und nach den geschweiften Klammern entfernen.
-	return data.toString().substring(firstCurlyBracket);
+	return data.toString().substring(firstCurlyBracket, lastCurlyBracket+1);
 }
 
 /* getHTTPHeader
@@ -161,7 +173,7 @@ function getJSON(data) {
 function getHTTPHeader(data) {
 	var firstCurlyBracket = data.indexOf("{");
 
-	if(!data.match(/http/i)) {
+	if(!data.toString().match(/http/i)) {
 		// Kein HTTP Header
 		return "-1";
 	}
@@ -185,11 +197,11 @@ function isParsableRequest(jsonData) {
 	// Validiere Daten der Anfrage.
 	if(jsonData == "-1") {
 		// Keine JSON vorhanden
-		logger.logInfo("Keine JSON-Datei erhalten.";
+		logger.logInfo("Keine JSON-Datei erhalten.");
 		console.log("Keine JSON-Datei erhalten."); //DEBUG
 	} else {
 		// HTTP-Request
-		logger.logInfo("JSON-Datei erhalten.";
+		logger.logInfo("JSON-Datei erhalten.");
 		console.log("JSON-Datei erhalten."); //DEBUG
 		parsableRequest = true;
 	}
@@ -208,12 +220,12 @@ function isHTTPHeader(httpHeader) {
 	// Validiere Header der Anfrage.
 	if(httpHeader == "-1") {
 		// Kein HTTP-Request
-		logger.logInfo("TCP-Request";
+		logger.logInfo("TCP-Request");
 	} else {
 		// HTTP-Request
-		logger.logInfo("HTTP-Request";
+		logger.logInfo("HTTP-Request");
 		console.log("HTTP-Request:"); //DEBUG
-		console.log("\n"+requestArr[0]+"\n"); //DEBUG
+		console.log("\n"+httpHeader+"\n"); //DEBUG
 		httpRequest = true;
 	}
 
