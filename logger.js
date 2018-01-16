@@ -23,9 +23,13 @@ exports.logError = function(funct, data) {
 	});
 }
 
+/* createTimeStamp
+ * Erstellt einen Zeitstempel im Format dd.mm.yyyy hh:mm:ss und gibt diesen
+ * als String zurück.
+ */
 function createTimeStamp() {
 	var date = new Date();
-	
+
 	var day = date.getDate();
 	if(day < 10) {
 		day = "0" + day;
@@ -35,9 +39,9 @@ function createTimeStamp() {
 	if(month < 10) {
 		month = "0" + month;
 	}
-	
+
 	var timestamp = day + "." + month + "." + date.getFullYear()
-					+ " " + date.getHours() 
+					+ " " + date.getHours()
 					+ ":" + date.getMinutes() + ":" + date.getSeconds();
 	return timestamp;
 }
