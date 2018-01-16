@@ -2,6 +2,12 @@ const net = require('net');
 var logger = require('./logger');
 var parseJSON = require('json-parse-async');
 
+/* *** Globale Zustandsvariablen *** */
+var isReadyToPair = false;
+var codewords = null;
+var knownIPs = new Array();
+var session = null;
+
 /* *** Starte Server *** */
 const PORT = 41337;
 var server = net.createServer(); // Neue Server Instanz.
@@ -16,8 +22,9 @@ console.log("Listening on port " + PORT); //DEBUG
  * Reagiert auf die Anfrage eines Clients.
  */
 function onClientConnected_ServerEvent(sock) {
-	console.log("\nNeue Verbindung von: " + sock.remoteAddress); //DEBUG
-	logger.logInfo("Neue Verbindung von: " + sock.remoteAddress);
+	console.log("\n####################################################"); //DEBUG
+	console.log("\nNeue Verbindung von: " + getIP(sock.remoteAddress)); //DEBUG
+	logger.logInfo("Neue Verbindung von: " + getIP(sock.remoteAddress));
 
 	sock.on('data', function(data) { // Daten vom Client
 		// Request validieren
@@ -74,9 +81,10 @@ function onClientConnected_ServerEvent(sock) {
 	// Client möchte die Verbindung beenden.
 	sock.on('end', function() {
 		console.log("Client möchte Verbindung schließen!"); // DEBUG
-		logger.logInfo("Verbindung auf Anfrage von " + sock.remoteAddress
+		logger.logInfo("Verbindung auf Anfrage von " + getIP(sock.remoteAddress)
 										+ " geschloßen.");
 		sock.end();
+		console.log("####################################################\n"); //DEBUG
 	}); // ENDE socket 'end'
 }
 
@@ -91,42 +99,97 @@ function endConnection(socket, isHttp, httpHeader, data) {
 	}
 }
 
-function handleClientRequest(content, sock, isHttp, headers) {
+/* handleClientRequest
+ * Behandelt Anfragen des Clients.
+ */
+function handleClientRequest(content, sock, isHttp, headers, isRegistered) {
 	logger.logInfo("Ein PC Client hat sich verbunden!");
 	console.log("Gerät: PC Client"); //DEBUG
-	if(content.password != undefined) {
+	if(!isKnownDevice(sock.remoteAddress)) { // Instanziierung einer neuen Verbindung
 		logger.logInfo("Neue Registrierung vom Client angefordert.");
-		console.log("Neue Anfrage in der Warteschlange."); //DEBUG
+		console.log("Bereit zur Paarung!"); //DEBUG
 		console.log("Passwort: " + content.password); //DEBUG
-		for(var i = 0; i < 100; i++); //DEBUG
+		codewords = content.password;
+		isReadyToPair = true;
 		endConnection(sock, isHttp, headers.get(200), '{"answer": "WAITING FOR VA"}');
-	} else if(content.confirmation != undefined) {
-		logger.logInfo("Client hat paarung bestätigt.");
-		if(content.confirmation) {
-			console.log("Client will sich verbinden!"); //DEBUG
-			endConnection(sock, isHttp, headers.get(200), '{"answer": "PAIRING WITH VA"}');
+	} else { // Die Verbindung besteht bereits.
+		if(content.unregister) { // Client will die Registrierung aufheben.
+			logger.logInfo("Registrierung des Clients wird entfernt.");
+			console.log("Client Registrierung wird entfernt."); //DEBUG
+			unregisterDevice(sock.remoteAddress);
+			endConnection(sock, isHttp, headers.get(200), '{"answer": "UNREGISTERED"}');
+		} else {
+			endConnection(sock, isHttp, headers.get(400), '{"answer": "ALREADY PAIRED"}');
 		}
-	} else {
-		console.error("Unbekannte Anfrage des PC Client!"); //DEBUG
 	}
 }
 
+/* handleGoogleRequest
+ * Behandelt Anfragen des Google VAs.
+ */
 function handleGoogleRequest(content, sock, isHttp, headers) {
 	logger.logInfo("Ein Google Gerät hat sich verbunden!");
 	console.log("Gerät: Google Home"); //DEBUG
 	if(content.result.metadata.intentName == "Koppeln") {
-		console.log("Anfrage: " + content.result.resolvedQuery);
-		console.log("Codewords: " + content.result.parameters.codewords);
+		console.log("Anfrage: " + content.result.resolvedQuery); //DEBUG
+		console.log("Codewords: " + content.result.parameters.codewords); //DEBUG
+		logger.logInfo("Prüfe die Codewords " + content.result.parameters.codewords);
+		if(codewords == content.result.parameters.codewords) {
+			session = new Session(getLastRegisteredIP(), sock.remoteAddress);
+			logger.logInfo("Verbindung zwischen Client (" + getLastRegisteredIP() + ") und VA(" + getIP(sock.remoteAddress) + ") erstellt.");
+			endConnection(sock, isHttp, headers.get(200), '{"answer": "CONNECTED"}');
+		} else {
+			logger.logInfo("VA hat falsche Codewörter übergeben.");
+			endConnection(sock, isHttp, headers.get(400), '{"answer": "WRONG CODEWORDS"}');
+		}
 	} else if(content.result.metadata.intentName == "Entkoppeln") {
-		console.log("Anfrage: " + content.result.resolvedQuery);
+		session = null
+		logger.logInfo("Verbindung zwischen Client (" + getLastRegisteredIP() + ") und VA(" + getIP(sock.remoteAddress) + ") gelöscht.");
+		endConnection(sock, isHttp, headers.get(200), '{"answer": "DISCONNECTED"}');
+	} else if(content.result.metadata.intentName == "Befehl") {
+		if(session != null) {
+			logger.logInfo("Neuer Befehl: " + content.befehl);
+			sendInstructions(session.clientIP, "1337", content.befehl);
+			endConnection(sock, isHttp, headers.get(200), '{"answer": "DISCONNECTED"}');
+		} else {
+			logger.logInfo("Befehl erhalten doch keine Session vorhanden.")
+			endConnection(sock, isHttp, headers.get(400), '{"answer": "NO SESSION"}');
+		}
 	}
 }
 
+/* handleAlexaRequest
+ * Behandelt Anfragen des Alexa VAs.
+ */
 function handleAlexaRequest(content, sock, isHttp, headers) {
 	logger.logInfo("Ein Alexa Gerät hat sich verbunden!");
-	console.log("Gerät: Amazon Echo"); //DEBUG
-	console.log("Anfrage: Alexa Koppeln"); //DEBUG
-	console.log("Codewords: " + content.koppeln.word1 + " " + content.koppeln.word2); //DEBUG
+	console.log("Gerät: Alexa"); //DEBUG
+	if(content.koppeln) {
+		console.log("Codewords: " + content.koppeln.word1 + " " + content.koppeln.word2); //DEBUG
+		logger.logInfo("Prüfe die Codewords " + content.koppeln.word1 + " " + content.koppeln.word2);
+		if(codewords == content.koppeln.word1 + " " + content.koppeln.word2) {
+			session = new Session(getLastRegisteredIP(), sock.remoteAddress);
+			logger.logInfo("Verbindung zwischen Client (" + getLastRegisteredIP() + ") und VA(" + getIP(sock.remoteAddress) + ") erstellt.");
+			endConnection(sock, isHttp, headers.get(200), '{"answer": "CONNECTED"}');
+		} else {
+			logger.logInfo("VA hat falsche Codewörter übergeben.");
+			endConnection(sock, isHttp, headers.get(400), '{"answer": "WRONG CODEWORDS"}');
+		}
+	} else if(content.befehl) {
+		if(session != null) {
+			logger.logInfo("Neuer Befehl: " + content.befehl);
+			sendInstructions(session.clientIP, "1337", content.befehl);
+			endConnection(sock, isHttp, headers.get(200), '{"answer": "DISCONNECTED"}');
+		} else {
+			logger.logInfo("Befehl erhalten doch keine Session vorhanden.")
+			endConnection(sock, isHttp, headers.get(400), '{"answer": "NO SESSION"}');
+		}
+	}
+}
+
+function Session(clientIP, vaIP) {
+	this.clientIP = getIP(clientIP);
+	this.vaIP = getIP(vaIP);
 }
 
 /* ************************* HILFS-FUNKTIONEN ******************************* */
@@ -244,4 +307,76 @@ function isHTTPHeader(httpHeader) {
 	}
 
 	return httpRequest;
+}
+
+/* getIP
+ * Schneidet die IP aus socket.remoteAddress
+ */
+function getIP(ipString) {
+	var lastColon = ipString.toString().lastIndexOf(":");
+	if(lastColon != -1)
+		ipString = ipString.toString().substring(lastColon + 1);
+	return ipString;
+}
+
+function isKnownDevice(ip) {
+	for(var i = 0; i < knownIPs.length; i++) {
+		if(knownIPs == getIP(ip)) {
+			return true;
+		}
+	}
+	knownIPs.push(getIP(ip));
+	return false;
+}
+
+function registerDevice(ip) {
+	return isKnownDevice(ip);
+}
+
+function unregisterDevice(ip) {
+	var tempArr = knownIPs;
+	for(var i = 0; i < knownIPs.length; i++) {
+		if(knownIPs[i] != getIP(ip)) {
+			tempArr.push(knownIPs[i]);
+		}
+	}
+	knownIPs = tempArr;
+}
+
+function getLastRegisteredIP() { //DEBUG
+	return knownIPs[knownIPs.length-1];
+}
+
+function sendInstructions(clientIP, clientPort, instruction) {
+	logger.logInfo("Sende Befehle an " + clientIP + ":" + clientPort);
+	console.log("Sende Befehle an " + clientIP + ":" + clientPort); //DEBUG
+	var http = require('http');
+	var options = {
+		hostname: clientIP,
+		port: clientPort,
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+		}
+	};
+
+	var req = http.request(options, function(res) {
+		logger.logInfo("Antwort von " + clientIP + ":" + clientPort);
+		logger.logInfo("Status: " + res.statusCode);
+		console.log("Antwort von " + clientIP + ":" + clientPort); //DEBUG
+		console.log("Status: " + res.statusCode); //DEBUG
+		res.setEncoding('utf8');
+		res.on('data', function(body) {
+			logger.logInfo("Daten: " + body);
+			console.log("Daten: " + body); //DEBUG
+		});
+	});
+
+	req.on('error', function(e) {
+		console.log("Fehler beim übermitteln der Befehle!");
+		logger.logError("sendInstructions", "Fehler beim übermitteln der Befehle!")
+	})
+
+	req.write('{"instruction": "' + instruction + '"}');
+	req.end();
 }
