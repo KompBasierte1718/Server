@@ -40,8 +40,22 @@ function createTimeStamp() {
 		month = "0" + month;
 	}
 
+  var hours = date.getHours() + 1;
+	if(hours < 10) {
+		hours = "0" + hours;
+	}
+
+  var minutes = date.getMinutes() + 1;
+  if(minutes < 10) {
+    minutes = "0" + minutes;
+  }
+
+  var seconds = date.getSeconds() + 1;
+  if(seconds < 10) {
+    seconds = "0" + seconds;
+  }
+
 	var timestamp = day + "." + month + "." + date.getFullYear()
-					+ " " + date.getHours()
-					+ ":" + date.getMinutes() + ":" + date.getSeconds();
+					         + " " + hours + ":" + minutes + ":" + seconds;
 	return timestamp;
 }
