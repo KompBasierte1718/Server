@@ -51,39 +51,13 @@ function onClientConnected_ServerEvent(sock) {
 
 					switch(content.device) {
 						case "pcclient":
-							logger.logInfo("Ein PC Client hat sich verbunden!");
-							console.log("Gerät: PC Client"); //DEBUG
-							if(content.password != undefined) {
-								logger.logInfo("Neue Registrierung vom Client angefordert.");
-								console.log("Neue Anfrage in der Warteschlange."); //DEBUG
-								console.log("Passwort: " + content.password); //DEBUG
-								for(var i = 0; i < 100; i++); //DEBUG
-								endConnection(sock, isHttp, headers.get(200), '{"answer": "WAITING FOR VA"}');
-							} else if(content.confirmation != undefined) {
-								logger.logInfo("Client hat paarung bestätigt.");
-								if(content.confirmation) {
-									console.log("Client will sich verbinden!"); //DEBUG
-									endConnection(sock, isHttp, headers.get(200), '{"answer": "PAIRING WITH VA"}');
-								}
-							} else {
-								console.error("Unbekannte Anfrage des PC Client!"); //DEBUG
-							}
+							handleClientRequest(content, sock, isHttp, headers);
 							break;
 						case "google":
-							logger.logInfo("Ein Google Gerät hat sich verbunden!");
-							console.log("Gerät: Google Home"); //DEBUG
-							if(content.result.metadata.intentName == "Koppeln") {
-								console.log("Anfrage: " + content.result.resolvedQuery);
-								console.log("Codewords: " + content.result.parameters.codewords);
-							} else if(content.result.metadata.intentName == "Entkoppeln") {
-								console.log("Anfrage: " + content.result.resolvedQuery);
-							}
+							handleGoogleRequest(content, sock, isHttp, headers);
 							break;
 						case "alexa":
-							logger.logInfo("Ein Alexa Gerät hat sich verbunden!");
-							console.log("Gerät: Amazon Echo"); //DEBUG
-							console.log("Anfrage: Alexa Koppeln"); //DEBUG
-							console.log("Codewords: " + content.koppeln.word1 + " " + content.koppeln.word2); //DEBUG
+							handleAlexaRequest(content, sock, isHttp, headers);
 							break;
 						default:
 							console.error("Gerät: Unbekannt"); //DEBUG
@@ -106,6 +80,9 @@ function onClientConnected_ServerEvent(sock) {
 	}); // ENDE socket 'end'
 }
 
+/* endConnection
+ * Beendet die Verbindung zu einem Gerät.
+ */
 function endConnection(socket, isHttp, httpHeader, data) {
 	if(isHttp){
 		socket.end(httpHeader + data);
@@ -114,6 +91,43 @@ function endConnection(socket, isHttp, httpHeader, data) {
 	}
 }
 
+function handleClientRequest(content, sock, isHttp, headers) {
+	logger.logInfo("Ein PC Client hat sich verbunden!");
+	console.log("Gerät: PC Client"); //DEBUG
+	if(content.password != undefined) {
+		logger.logInfo("Neue Registrierung vom Client angefordert.");
+		console.log("Neue Anfrage in der Warteschlange."); //DEBUG
+		console.log("Passwort: " + content.password); //DEBUG
+		for(var i = 0; i < 100; i++); //DEBUG
+		endConnection(sock, isHttp, headers.get(200), '{"answer": "WAITING FOR VA"}');
+	} else if(content.confirmation != undefined) {
+		logger.logInfo("Client hat paarung bestätigt.");
+		if(content.confirmation) {
+			console.log("Client will sich verbinden!"); //DEBUG
+			endConnection(sock, isHttp, headers.get(200), '{"answer": "PAIRING WITH VA"}');
+		}
+	} else {
+		console.error("Unbekannte Anfrage des PC Client!"); //DEBUG
+	}
+}
+
+function handleGoogleRequest(content, sock, isHttp, headers) {
+	logger.logInfo("Ein Google Gerät hat sich verbunden!");
+	console.log("Gerät: Google Home"); //DEBUG
+	if(content.result.metadata.intentName == "Koppeln") {
+		console.log("Anfrage: " + content.result.resolvedQuery);
+		console.log("Codewords: " + content.result.parameters.codewords);
+	} else if(content.result.metadata.intentName == "Entkoppeln") {
+		console.log("Anfrage: " + content.result.resolvedQuery);
+	}
+}
+
+function handleAlexaRequest(content, sock, isHttp, headers) {
+	logger.logInfo("Ein Alexa Gerät hat sich verbunden!");
+	console.log("Gerät: Amazon Echo"); //DEBUG
+	console.log("Anfrage: Alexa Koppeln"); //DEBUG
+	console.log("Codewords: " + content.koppeln.word1 + " " + content.koppeln.word2); //DEBUG
+}
 
 /* ************************* HILFS-FUNKTIONEN ******************************* */
 
