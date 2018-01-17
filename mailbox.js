@@ -23,7 +23,7 @@ console.log("Listening on port " + PORT); //DEBUG
  */
 function onClientConnected_ServerEvent(sock) {
 	console.log("\n####################################################"); //DEBUG
-	console.log("\nNeue Verbindung von: " + getIP(sock.remoteAddress)); //DEBUG
+	console.log("Neue Verbindung von: " + getIP(sock.remoteAddress)); //DEBUG
 	logger.logInfo("Neue Verbindung von: " + getIP(sock.remoteAddress));
 
 	sock.on('data', function(data) { // Daten vom Client
@@ -41,7 +41,6 @@ function onClientConnected_ServerEvent(sock) {
 			console.log("Verbindung geschloßen!"); //DEBUG
 			logger.logInfo("Verbindung mit " + sock.remoteAddress + " geschloßen.");
 			endConnection(sock, isHttp, headers.get(400), '{"answer": "ERROR: NO JSON"}');
-			return;
 		} else {
 			parseJSON(requestArr[1], function(err, content) {
 				if(err) {
@@ -50,8 +49,7 @@ function onClientConnected_ServerEvent(sock) {
 					console.error("Fehler: " + err + "\n"); //DEBUG
 					logger.logError("onClientConnected_ServerEvent",
 												"JSON konnte nicht geparst werden.");
-					endConnection(sock, isHttp, headers.get(400), '{"answer": "JSON NOT PARSABLE"}');
-					return;
+					endConnection(sock, isHttp, headers.get(400), '{"speach": "JSON NOT PARSABLE"}');
 				} else {
 					// JSON-Datei erforlgreich geparst.
 					console.log("\nJSON-Datei erforlgreich geparst."); //DEBUG
@@ -60,18 +58,19 @@ function onClientConnected_ServerEvent(sock) {
 						case "pcclient":
 							handleClientRequest(content, sock, isHttp, headers);
 							break;
-						case "google":
-							handleGoogleRequest(content, sock, isHttp, headers);
-							break;
 						case "alexa":
 							handleAlexaRequest(content, sock, isHttp, headers);
 							break;
 						default:
-							console.error("Gerät: Unbekannt"); //DEBUG
-							logger.logError("onClientConnected_ServerEvent",
+							if(content.result.metadata.intentName != null) {
+								handleGoogleRequest(content, sock, isHttp, headers);
+								break;
+							} else {
+								console.error("Gerät: Unbekannt"); //DEBUG
+								logger.logError("onClientConnected_ServerEvent",
 														"Unbekanntes Gerät.");
-							endConnection(sock, isHttp, headers.get(400), '{"answer": "UNKNOWN DEVICE"}');
-							return;
+								endConnection(sock, isHttp, headers.get(400), '{"answer": "UNKNOWN DEVICE"}');
+							}
 					}
 				}
 			}); // Ende parseJSON
@@ -95,7 +94,7 @@ function endConnection(socket, isHttp, httpHeader, data) {
 	if(isHttp){
 		socket.end(httpHeader + data);
 	} else {
-		socket.end(data);
+		//socket.end(data);
 	}
 }
 
@@ -119,7 +118,10 @@ function handleClientRequest(content, sock, isHttp, headers, isRegistered) {
 			unregisterDevice(sock.remoteAddress);
 			endConnection(sock, isHttp, headers.get(200), '{"answer": "UNREGISTERED"}');
 		} else {
-			endConnection(sock, isHttp, headers.get(400), '{"answer": "ALREADY PAIRED"}');
+			if(content.instructions) {
+				// Hier werden Befehle an den Anfrageneden Client gesendet!
+				endConnection(sock, isHttp, headers.get(200), '{"answer": "Mach deine Hose zu!"}');
+			}
 		}
 	}
 }
@@ -137,10 +139,11 @@ function handleGoogleRequest(content, sock, isHttp, headers) {
 		if(codewords == content.result.parameters.codewords) {
 			session = new Session(getLastRegisteredIP(), sock.remoteAddress);
 			logger.logInfo("Verbindung zwischen Client (" + getLastRegisteredIP() + ") und VA(" + getIP(sock.remoteAddress) + ") erstellt.");
-			endConnection(sock, isHttp, headers.get(200), '{"answer": "CONNECTED"}');
+			endConnection(sock, isHttp, headers.get(200), '{"speech": "Mit Client Verbunden.","displayText": "Mit Client Verbunden."}');
 		} else {
 			logger.logInfo("VA hat falsche Codewörter übergeben.");
-			endConnection(sock, isHttp, headers.get(400), '{"answer": "WRONG CODEWORDS"}');
+			console.log("VA hat falsche Codewörter übergeben.");
+			endConnection(sock, isHttp, headers.get(200), '{"speech": "Falsche Codewörter.","displayText": "Falsche Codewörter."}');
 		}
 	} else if(content.result.metadata.intentName == "Entkoppeln") {
 		session = null
@@ -149,7 +152,6 @@ function handleGoogleRequest(content, sock, isHttp, headers) {
 	} else if(content.result.metadata.intentName == "Befehl") {
 		if(session != null) {
 			logger.logInfo("Neuer Befehl: " + content.befehl);
-			sendInstructions(session.clientIP, "1337", content.befehl);
 			endConnection(sock, isHttp, headers.get(200), '{"answer": "DISCONNECTED"}');
 		} else {
 			logger.logInfo("Befehl erhalten doch keine Session vorhanden.")
@@ -223,12 +225,14 @@ function splitRequest(data) {
  */
 function getJSON(data) {
 	var firstCurlyBracket = data.indexOf("{");
-	var lastCurlyBracket = data.lastIndexOf("}");
+	var lastCurlyBracket = getLastIndexOf(data, "}");
 
-	if(lastCurlyBracket == -1) {
+	//if(lastCurlyBracket == -1) {
 		// Fehler wenn die letzte geschlossene Klammer vin hinten gesucht werden soll
-		lastCurlyBracket = data.indexOf("}");
-	}
+		//lastCurlyBracket = data.indexOf("}");
+		//if(lastCurlyBracket < data.length-10)
+		//	lastCurlyBracket = data.length-1;
+	//}
 
 	if(firstCurlyBracket == -1 || lastCurlyBracket == -1) {
 		// Keine JSON-Datei
@@ -237,6 +241,15 @@ function getJSON(data) {
 
 	// Alles vor und nach den geschweiften Klammern entfernen.
 	return data.toString().substring(firstCurlyBracket, lastCurlyBracket+1);
+}
+
+function getLastIndexOf(string, char) {
+	for(var i = string.length; i > 0; i--) {
+		if(string.toString().charAt(i) == char) {
+			return i;
+		}
+	}
+	return -1;
 }
 
 /* getHTTPHeader
@@ -298,6 +311,7 @@ function isHTTPHeader(httpHeader) {
 	if(httpHeader == "-1") {
 		// Kein HTTP-Request
 		logger.logInfo("TCP-Request");
+		console.log("TCP-Request:"); //DEBUG
 	} else {
 		// HTTP-Request
 		logger.logInfo("HTTP-Request");
@@ -373,7 +387,7 @@ function sendInstructions(clientIP, clientPort, instruction) {
 	});
 
 	req.on('error', function(e) {
-		console.log("Fehler beim übermitteln der Befehle!");
+		console.log("Fehler beim übermitteln der Befehle! " + e);
 		logger.logError("sendInstructions", "Fehler beim übermitteln der Befehle!")
 	})
 
