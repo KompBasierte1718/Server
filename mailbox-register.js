@@ -4,6 +4,19 @@ const logger = require('./logger');
 const helper = require('./mailbox-helper');
 
 
+/* Session
+ * Dieses Objekt stellt eine Verbindung zwischen Client und Voice Assistent
+ * dar, bestehend aus:
+ * Client IP, Voice Assistent IP und den vom Client festgelegten Codewörtern.
+ */
+function Session(clientIP, vaIP, readyToPair, codewords) {
+	this.clientIP = getIP(clientIP);
+	this.vaIP = getIP(vaIP);
+  this.readyToPair = readyToPair;
+  this.codewords = codewords;
+}
+
+
 /* *** Globale Zustandsvariablen *** */
 var ipArr = new Array();
 var session = new helper.Session(null, null, false, null);
