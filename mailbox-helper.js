@@ -10,6 +10,9 @@
  * Seit:  18.01.2018
  */
 
+// Referenzen einbinden.
+const logger = require('./logger');
+
 
  // HTTP Antwort Header
  var headers = new Map();
@@ -162,6 +165,7 @@ function isKnownIP(ipArr, ip) {
 	for(var i = 0; i < ipArr.length; i++) {
 		if(ipArr[i] == getIP(ip)) {
       logger.logInfo("IP " + ipArr[i] + " ist bereits bekannt.");
+      console.log("IP " + ipArr[i] + " ist bereits bekannt."); //DEBUG
 			return true;
 		}
 	}
@@ -181,6 +185,8 @@ function registerIP(ipArr, ip) {
   if(!knownIP) {
     // Bisher unbekannte IP
     ipArr.push(getIP(ip));
+    logger.logInfo("IP " + getIP(ip) + " registriert.");
+    console.log("IP " + getIP(ip) + " registriert."); //DEBUG
     return true;
   }
 
@@ -198,7 +204,10 @@ function unregisterIP(ipArr, ip) {
 	for(var i = 0; i < ipArr.length; i++) {
 		if(ipArr[i] != getIP(ip)) {
 			tempArr.push(ipArr[i]);
-		}
+		} else {
+      logger.logInfo("IP " + getIP(ip) + " deregistriert.");
+      console.log("IP " + getIP(ip) + " deregistriert."); //DEBUG
+    }
 	}
 	ipArr = tempArr;
   return ipArr;
