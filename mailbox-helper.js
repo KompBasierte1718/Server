@@ -1,4 +1,15 @@
-/* ************************* HILFS-FUNKTIONEN ******************************* */
+/* Datei: mailbox-helper.js
+ * Beinhaltet Funktionen welche zum Validieren von Requests nötig sind.
+ * Unteranderem:
+ * Aufsplitten von Requests in Header und Body.
+ * Erkennen von JSON-Dateien.
+ * Erkennen von verwendeten Protokollen (HTTP, HTTPs, usw.)
+ * Vergleichen von IP Adressen und verwalten dieser in Arrays.
+ *
+ * Autor: Daniel Nagel
+ * Seit:  18.01.2018
+ */
+
 
 /* splitRequest
  * Liefert ein Array  mit zwei Elementen zurück.
@@ -14,7 +25,7 @@ function splitRequest(data) {
 			return splitArr;
 		}
 
-		var header = getHTTPHeader(data);
+		var header = getHeader(data);
 		var json = getJSON(data);
 
 		splitArr[0] = header;
@@ -38,10 +49,14 @@ function getJSON(data) {
 	}
 
 	// Alles vor und nach den geschweiften Klammern entfernen.
-	return data.toString().substring(firstCurlyBracket, lastCurlyBracket+1);
+	return data.toString().substring(firstCurlyBracket, lastCurlyBracket + 1);
 }
 
 
+/* getLastIndexOf
+ * Liefert den letzten Index eines Zeichens innerhalb eines Strings zurück.
+ * Konnte das Zeichen nicht gefunden werden, wird -1 zurück gegeben.
+ */
 function getLastIndexOf(string, char) {
 	for(var i = string.length; i > 0; i--) {
 		if(string.toString().charAt(i) == char) {
@@ -51,7 +66,8 @@ function getLastIndexOf(string, char) {
 	return -1;
 }
 
-/* getHTTPHeader
+
+/* getHeader
  * Prüft ob der String 'HTTP/http' im Request vorhanden ist.
  * Sollte das der Fall sein wird alles vor der ersten geschweiften Klammer
  * zurückgegeben.
@@ -59,14 +75,13 @@ function getLastIndexOf(string, char) {
  * zurückgegeben.
  * Wurde 'HTTP/http' nicht gefunden wird '-1' zurückgegeben.
  */
-function getHTTPHeader(data) {
-	var firstCurlyBracket = data.indexOf("{");
-
+function getHeader(data) {
 	if(!data.toString().match(/http/i)) {
 		// Kein HTTP Header
 		return "-1";
 	}
 
+  var firstCurlyBracket = data.indexOf("{");
 	if(firstCurlyBracket == -1) {
 		// Keine JSON vorhanden.
 		return data;
@@ -76,27 +91,25 @@ function getHTTPHeader(data) {
 	return data.toString().substring(0, firstCurlyBracket);
 }
 
+
 /* isParsableRequest
  * Validiert den Request und erzeugt Ausgaben in der Log-Datei.
  * Liefert true zurück wenn es sich bei der Anfrage um eine JSON-Datei handelt.
  */
 function isParsableRequest(jsonData) {
-	var parsableRequest = false;
-
-	// Validiere Daten der Anfrage.
 	if(jsonData == "-1") {
 		// Keine JSON vorhanden
 		logger.logInfo("Keine JSON-Datei erhalten.");
 		console.log("Keine JSON-Datei erhalten."); //DEBUG
+    return false;
 	} else {
 		// HTTP-Request
 		logger.logInfo("JSON-Datei erhalten.");
 		console.log("JSON-Datei erhalten."); //DEBUG
-		parsableRequest = true;
+		return true;
 	}
-
-	return parsableRequest;
 }
+
 
 /* isHTTPHeader
  * Validiert den Request und erzeugt Ausgaben in der Log-Datei.
@@ -104,22 +117,18 @@ function isParsableRequest(jsonData) {
  * handelt.
  */
 function isHTTPHeader(httpHeader) {
-	var httpRequest = false;
-
-	// Validiere Header der Anfrage.
 	if(httpHeader == "-1") {
 		// Kein HTTP-Request
 		logger.logInfo("TCP-Request");
 		console.log("TCP-Request:"); //DEBUG
+    return false;
 	} else {
 		// HTTP-Request
 		logger.logInfo("HTTP-Request");
 		console.log("HTTP-Request:"); //DEBUG
 		console.log("\n"+httpHeader+"\n"); //DEBUG
-		httpRequest = true;
+		return true;
 	}
-
-	return httpRequest;
 }
 
 /* getIP
@@ -132,11 +141,11 @@ function getIP(ipString) {
 	return ipString;
 }
 
-/* isKnownDevice
+/* isKnownIP
  * Überprüft ob eine IP bereits in einem Array aus IPs vorhanden ist.
  * Liefert true wenn die IP vorhanden ist, ansonsten false.
  */
-function isKnownDevice(ipArr, ip) {
+function isKnownIP(ipArr, ip) {
 	for(var i = 0; i < ipArr.length; i++) {
 		console.log("Bekannte IP: " + ipArr[i]); //DEBUG
 		if(ipArr[i] == getIP(ip)) {
@@ -147,15 +156,16 @@ function isKnownDevice(ipArr, ip) {
 }
 
 
-/* registerDevice
+/* registerIP
  * Ist eine IP noch nicht vorhanden, wird diese in das Array aus IPs
  * geschrieben.
  * Liefert true wenn die IP registriert wurde, ansonsten false.
  */
-function registerDevice(ipArr, ip) {
-  knownDevice = isKnownDevice(ipArr, ip);
+function registerIP(ipArr, ip) {
+  knownIP = isKnownIP(ipArr, ip);
 
-  if(!knownDevice) {
+  if(!knownIP) {
+    // Bisher unbekannte IP
     ipArr.push(getIP(ip));
     return true;
   }
@@ -164,11 +174,11 @@ function registerDevice(ipArr, ip) {
 }
 
 
-/* unregisterDevice
+/* unregisterIP
  * Ist eine IP bereits registriert, wird diese aus dem Array aus IPs entfernt.
  * Gibt das Array aus IPs zurück.
  */
-function unregisterDevice(ipArr, ip) {
+function unregisterIP(ipArr, ip) {
 	var tempArr = ipArr;
 	for(var i = 0; i < ipArr.length; i++) {
 		if(ipArr[i] != getIP(ip)) {
