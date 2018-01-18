@@ -38,9 +38,10 @@ function Request(header, protocol, data) {
  * dar, bestehend aus:
  * Client IP, Voice Assistent IP und den vom Client festgelegten Codewörtern.
  */
-function Session(clientIP, vaIP, codeword) {
+function Session(clientIP, vaIP, readyToPair, codeword) {
 	this.clientIP = getIP(clientIP);
 	this.vaIP = getIP(vaIP);
+  this.readyToPair = readyToPair;
   this.codeword = codeword;
 }
 
