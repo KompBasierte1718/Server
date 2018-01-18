@@ -23,10 +23,10 @@
  * Dieses Objekt stellt einen Request dar, bestehend aus:
  * Header, Daten und Protokoll.
  */
-function Request(header, data, protocol) {
+function Request(header, protocol, data) {
   this.header = header;
-  this.data = data;
   this.protocol = protocol;
+  this.data = data;
 }
 
 
@@ -45,8 +45,8 @@ function splitRequest(data) {
 		}
 
 		request.header = getHeader(data);
-		request.data = getJSONFromBody(data);
     request.protocol = checkUsedProtocol(request.header);
+		request.data = getJSONFromBody(data);
 
 		return request;
 }
