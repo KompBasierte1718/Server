@@ -10,6 +10,12 @@
  * Seit:  18.01.2018
  */
 
+ // HTTP-Header Antwort Header
+ var headers = new Map();
+ headers.set(200, 'HTTP/1.1 200 OK\r\n'
+            +'Content-Type: application/json\r\n'+'Connection: close\r\n\r\n');
+ headers.set(400, 'HTTP/1.1 400 Bad Request\r\n'
+            +'Content-Type: application/json\r\nConnection: close\r\n\r\n');
 
 /* splitRequest
  * Liefert ein Array  mit zwei Elementen zurück.
