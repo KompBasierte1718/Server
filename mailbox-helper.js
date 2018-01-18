@@ -19,6 +19,17 @@
             +'Content-Type: application/json\r\nConnection: close\r\n\r\n');
 
 
+/* Request
+ * Dieses Objekt stellt einen Request dar, bestehend aus:
+ * Header, Daten und Protokoll.
+ */
+function Request(header, data, protocol) {
+  this.header = header;
+  this.data = data;
+  this.protocol = protocol;
+}
+
+
 /* splitRequest
  * Teilt den erhaltenen Request in Header und JSON-Datei auf.
  * Rückgabe:
@@ -27,21 +38,17 @@
  * wurde.
  */
 function splitRequest(data) {
-		var splitArr = new Array();
-		splitArr.push(null);
-		splitArr.push(null);
+		var request = new Request(null, null, null);
 
 		if(data == undefined || data == null || data == "") {
-			return splitArr;
+			return request;
 		}
 
-		var header = getHeader(data);
-		var json = getJSON(data);
+		request.header = getHeader(data);
+		request.data = getJSONFromBody(data);
+    request.protocol = checkUsedProtocol(request.header);
 
-		splitArr[0] = header;
-		splitArr[1] = json;
-
-		return splitArr;
+		return request;
 }
 
 
@@ -108,29 +115,29 @@ function getLastIndexOf(string, char) {
  * Überprüft welches Protokoll der Request verwendet.
  * Dazu wird im Header nach einer Zeichenkette gesucht.
  * Rückgabe:
- * 0 wenn das HTTPS Protokoll verwendet wird.
- * 1 wenn das HTTP Protokoll verwendet wird.
- * 2 wenn das verwendete Protokoll unbekannt ist, vermutlich wird TCP verwendet.
+ * 0 wenn das verwendete Protokoll unbekannt ist, vermutlich wird TCP verwendet.
+ * 1 wenn das HTTPS Protokoll verwendet wird.
+ * 2 wenn das HTTP Protokoll verwendet wird.
  */
 function checkUsedProtocol(header) {
-  if(data.toString().match(/https/i)) {
+  if(header == null) {
+    // Unbekanntes Protokoll, vermutlich TCP-Request
+    logger.logInfo("Das verwendete Protokoll des Request ist Unbekannt (TCP).");
+    console.log("TCP-Request:"); //DEBUG
+    return 0;
+  } else if(header.toString().match(/https/i)) {
     // HTTPs Header
     logger.logInfo("Das verwendete Protokoll des Request ist HTTPS.");
     console.log("HTTPS-Request:"); //DEBUG
     console.log("\n"+header+"\n"); //DEBUG
-    return 0;
-  } else if(data.toString().match(/http/i)) {
+    return 1;
+  } else if(header.toString().match(/http/i)) {
     // HTTP Header
     logger.logInfo("Das verwendete Protokoll des Request ist HTTP.");
     console.log("HTTP-Request:"); //DEBUG
     console.log("\n"+header+"\n"); //DEBUG
-    return 1;
-  } else {
-		// Unbekanntes Protokoll, vermutlich TCP-Request
-		logger.logInfo("Das verwendete Protokoll des Request ist Unbekannt (TCP).");
-		console.log("TCP-Request:"); //DEBUG
     return 2;
-	}
+  }
 }
 
 /* getIP
