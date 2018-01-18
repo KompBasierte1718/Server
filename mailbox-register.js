@@ -1,76 +1,56 @@
 const net = require('net');
-var parseJSON = require('json-parse-async');
-var logger = require('./logger');
-var helper = require('./mailbox-helper');
+const parseJSON = require('json-parse-async');
+const logger = require('./logger');
+const helper = require('./mailbox-helper');
 
 
 /* *** Globale Zustandsvariablen *** */
-var isReadyToPair = false;
-var codewords = null;
-var knownIPs = new Array();
-var session = null;
+var ipArr = new Array();
+var session = new helper.Session(null, null, false, null);
 var befehl = null;
 
-/* *** Starte Server *** */
-const PORT = 51337;
-var server = net.createServer(); // Neue Server Instanz.
-server.listen(PORT); // Server Port öffnen.
-server.on('connection', onClientConnected_ServerEvent); // Event bei 'connection'
-logger.logInfo("Registrierungs Server gestartet.");
-console.log("Listening on port " + PORT); //DEBUG
+
+/* *** Server initialisieren *** */
+const port = 51337; // Register Port
+const server = net.createServer(); // Neue Server Instanz.
+
+server.listen(port); // Server Port öffnen.
+server.on('connection', clientConnectedEvent); // Event bei 'connection'
+
+logger.logInfo("Registrierungs-Server gestartet. Port: " + port);
+console.log("Registrierungs-Server gestartet. Port: " + port); //DEBUG
 
 
 /* ************************* SERVER-FUNKTIONEN ****************************** */
 
-/* onClientConnected_ServerEvent
+
+/* clientConnectedEvent
  * Reagiert auf die Anfrage eines Clients.
  */
-function onClientConnected_ServerEvent(sock) {
+function clientConnectedEvent(sock) {
 	console.log("\n####################################################"); //DEBUG
-	console.log("Neue Registrierung von: " + getIP(sock.remoteAddress)); //DEBUG
-	logger.logInfo("Neue Registrierung von: " + getIP(sock.remoteAddress));
+	console.log("Neue Verbindung von: " + getIP(sock.remoteAddress)); //DEBUG
+	logger.logInfo("Neue Verbindung von: " + getIP(sock.remoteAddress));
 
-	sock.on('data', function(data) { // Daten vom Client
-		// Request validieren
-		var requestArr = splitRequest(data);
-		var isHttp = isHTTPHeader(requestArr[0]);
-		var isParsable = isParsableRequest(requestArr[1]);
+	sock.on('data', function(data) {
+		console.log("Daten vom Client erhalten."); //DEBUG
+		logger.logInfo("Daten vom Client erhalten.");
 
-		if(!isParsable) {
-			console.log("Verbindung geschloßen!"); //DEBUG
-			logger.logInfo("Verbindung mit " + sock.remoteAddress + " geschloßen.");
-			endConnection(sock, isHttp, headers.get(400), '{"answer": "ERROR: NO JSON"}');
+		// Request aufteilen in Header, verwendetes Protokoll und Daten.
+		var request = helper.splitRequest(data);
+
+		if(request.data == null) {
+			endFlawedConnection(sock, request.protocol, "Keine Daten, Verbindung wird geschloßen!", "no json");
 		} else {
-			parseJSON(requestArr[1], function(err, content) {
-				if(err) {
-					console.error("\nKann JSON-Datei nicht parsen!"); //DEBUG
-					console.error("Inhalt: " + data); //DEBUG
-					console.error("Fehler: " + err + "\n"); //DEBUG
-					logger.logError("onClientConnected_ServerEvent",
-												"JSON konnte nicht geparst werden.");
-					endConnection(sock, isHttp, headers.get(400), '{"speach": "JSON NOT PARSABLE"}');
+			parseJSON(request.data, function(error, json) {
+				if(error) {
+					endFlawedConnection(sock, request.protocol,
+									"JSON konnte nicht geparst werden. Inhalt: " + data
+									+ "Fehler: " + error, "json not parsable");
 				} else {
-					// JSON-Datei erforlgreich geparst.
-					console.log("\nJSON-Datei erforlgreich geparst."); //DEBUG
-
-					switch(content.device) {
-						case "pcclient":
-							handleClientRequest(content, sock, isHttp, headers);
-							break;
-						case "alexa":
-							handleAlexaRequest(content, sock, isHttp, headers);
-							break;
-						default:
-							if(content.result != undefined) {
-								handleGoogleRequest(content, sock, isHttp, headers);
-								break;
-							} else {
-								console.error("Gerät: Unbekannt"); //DEBUG
-								logger.logError("onClientConnected_ServerEvent",
-														"Unbekanntes Gerät.");
-								endConnection(sock, isHttp, headers.get(400), '{"answer": "UNKNOWN DEVICE"}');
-							}
-					}
+					console.log("JSON-Datei erforlgreich geparst."); //DEBUG
+					logger.logInfo("JSON-Datei erforlgreich geparst.");
+					checkDevice(json, sock, request.protocol);
 				}
 			}); // Ende parseJSON
 		}
@@ -89,81 +69,131 @@ function onClientConnected_ServerEvent(sock) {
 /* endConnection
  * Beendet die Verbindung zu einem Gerät.
  */
-function endConnection(socket, isHttp, httpHeader, data) {
-	if(isHttp){
-		socket.end(httpHeader + data);
+function endConnection(socket, protocol, status, message) {
+	console.log("Verbindung wird geschloßen!"); //DEBUG
+	logger.logInfo("Verbindung wird geschloßen!");
+	if(protocol == "http"){
+		socket.end(helper.headers.get(status) + message);
 	} else {
-		socket.end(data);
+		socket.end(message);
+	}
+}
+
+
+/* endFlawedConnection
+ * Beendet eine Feherhafte Verbindung mit dem Statuscode 400 und Loggt den
+ * entstandenen Fehler im Log.
+ */
+function endFlawedConnection(socket, protocol, errLog, errJSON) {
+	console.error(errLog); //DEBUG
+	logger.logError('connection', errLog);
+	endConnection(socket, protocol, 400, '{"error": "' + errJSON + '"}');
+}
+
+function endGoogleConnection(socket, message) {
+	console.log(message); //DEBUG
+	logger.logInfo(message);
+	endConnection(socket, "http", 200, '{"speech": "' + message + '","displayText": "' + message + '"}');
+}
+
+function endAlexaConnection(socket, message) {
+	console.log(message); //DEBUG
+	logger.logInfo(message);
+	endConnection(socket, "http", 200, '{"answer": "' + message + '"}');
+}
+
+
+/* checkDevice
+ * Überprüft welches Gerät die Anfrage gesendet hat.
+ */
+function checkDevice(json, socket, protocol) {
+	console.log("Prüfe welches Gerät verwendet wird."); //DEBUG
+	logger.logInfo("Prüfe welches Gerät verwendet wird.");
+
+	switch(json.device) {
+		case "pcclient":
+			handleClientRequest(json, socket, protocol);
+			break;
+		case "alexa":
+			handleAlexaRequest(json, socket, protocol);
+			break;
+		default:
+			if(json.result != undefined) {
+				// Google bietet keine Möglichkeit die JSON-Datei anzupassen.
+				handleGoogleRequest(json, socket, protocol);
+			} else {
+				endFlawedConnection(socket, protocol, "Unbekanntes Gerät.", "unknown device");
+			}
 	}
 }
 
 /* handleClientRequest
  * Behandelt Anfragen des Clients.
  */
-function handleClientRequest(content, sock, isHttp, headers, isRegistered) {
-	// endConnection nicht möglich, daher wird beim client ausscließlich die
-	// write() Methode genutzt.
+function handleClientRequest(json, socket, protocol) {
+	// TEST ob endConnection möglich ist statt write.
 	logger.logInfo("Ein PC Client hat sich verbunden!");
 	console.log("Gerät: PC Client"); //DEBUG
-	if(!isKnownDevice(sock.remoteAddress)) { // Instanziierung einer neuen Verbindung
-		logger.logInfo("Neue Registrierung vom Client angefordert.");
-		logger.logInfo("Passwort: " + content.password);
-		console.log("Bereit zur Paarung!"); //DEBUG
-		console.log("Passwort: " + content.password); //DEBUG
-		codewords = content.password;
-		isReadyToPair = true;
-		sock.write('{"answer": "WAITING FOR VA"}');
-		//endConnection(sock, isHttp, headers.get(200), '{"answer": "WAITING FOR VA"}');
+	if(helper.registerIP(ipArr, socket.remoteAddress)) {
+		// Eine neue IP wurde registriert. Der Client möchte sich mit einem Voice
+		// Assistent verbinden.
+		session.clientIP = helper.getLastRegisteredIP(ipArr);
+		session.codewords = json.password;
+		session.isReadyToPair = true;
+		logger.logInfo("Client möchte sich mit VA verbinden. Codewörter: " + session.codewords);
+		console.log("Client möchte sich mit VA verbinden. Codewörter: " + session.codewords); //DEBUG
+		// socket.write('{"answer": "WAITING FOR VA"}'); // TEST
+		endConnection(socket, protocol, 200, '{"answer": "WAITING FOR VA"}'); // TEST
 	}
 }
 
 /* handleGoogleRequest
  * Behandelt Anfragen des Google VAs.
  */
-function handleGoogleRequest(content, sock, isHttp, headers) {
-	logger.logInfo("Ein Google Gerät hat sich verbunden!");
+function handleGoogleRequest(json, socket, protocol) {
+	logger.logInfo("Google Home hat sich verbunden!");
 	console.log("Gerät: Google Home"); //DEBUG
-	if(content.result.metadata.intentName == "Koppeln") {
-		console.log("Anfrage: " + content.result.resolvedQuery); //DEBUG
-		console.log("Codewords: " + content.result.parameters.codewords); //DEBUG
-		logger.logInfo("Prüfe die Codewords " + content.result.parameters.codewords);
-		if(codewords == content.result.parameters.codewords) {
-			session = new Session(getLastRegisteredIP(), sock.remoteAddress);
-			logger.logInfo("Verbindung zwischen Client (" + getLastRegisteredIP() + ") und VA(" + getIP(sock.remoteAddress) + ") erstellt.");
-			endConnection(sock, isHttp, headers.get(200), '{"speech": "Mit Client Verbunden.","displayText": "Mit Client Verbunden."}');
-		} else {
-			logger.logInfo("VA hat falsche Codewörter übergeben.");
-			console.log("VA hat falsche Codewörter übergeben.");
-			endConnection(sock, isHttp, headers.get(200), '{"speech": "Falsche Codewörter.","displayText": "Falsche Codewörter."}');
+	session.vaIP = getIP(socket.remoteAddress);
+	if("Koppeln" == json.result.metadata.intentName) {
+		logger.logInfo("Google Home möchte sich mit einem Client verbinden.");
+		console.log("Google Home möchte sich mit einem Client verbinden."); //DEBUG
+		var vaCodewords = json.result.parameters.codewords;
+		if(!session.isReadyToPair) {
+			endGoogleConnection(socket, "Client möchte bisher keine Kopplung herstellen.");
+	  } else if(session.codewords == vaCodewords) {
+			console.log("Verbindung zwischen Client (" + session.clientIP + ") und VA(" + session.vaIP + ") erstellt."); //DEBUG
+			logger.logInfo("Verbindung zwischen Client (" + session.clientIP + ") und VA(" + session.vaIP + ") erstellt.");
+			endGoogleConnection(socket, "Mit Client gekoppelt.");
+		} else if(session.codewords != vaCodewords) {
+			endGoogleConnection(socket, "Falsche Codewörter, es findet keine Kopplung statt.");
 		}
-	} else if(content.result.metadata.intentName == "Entkoppeln") {
-		session = null
-		logger.logInfo("Verbindung zwischen Client (" + getLastRegisteredIP() + ") und VA(" + getIP(sock.remoteAddress) + ") gelöscht.");
-		endConnection(sock, isHttp, headers.get(200), '{"speech": "Verbindung mit Client aufgehoben.","displayText": "Verbindung mit Client aufgehoben."}');
+	} else if("Entkoppeln" == json.result.metadata.intentName) {
+		session.vaIP = null
+		console.log("Verbindung zwischen Client (" + getLastRegisteredIP() + ") und VA(" + session.vaIP + ") gelöscht.");
+		logger.logInfo("Verbindung zwischen Client (" + getLastRegisteredIP() + ") und VA(" + session.vaIP + ") gelöscht.");
+		endGoogleConnection(socket, "Kopplung mit Client aufgehoben.");
 	}
 }
 
 /* handleAlexaRequest
  * Behandelt Anfragen des Alexa VAs.
  */
-function handleAlexaRequest(content, sock, isHttp, headers) {
-	logger.logInfo("Ein Alexa Gerät hat sich verbunden!");
+function handleAlexaRequest(json, socket, protocol) {
+	logger.logInfo("Alexa hat sich verbunden!");
 	console.log("Gerät: Alexa"); //DEBUG
-	if(content.koppeln) {
-		console.log("Codewords: " + content.koppeln.word1 + " " + content.koppeln.word2); //DEBUG
-		logger.logInfo("Prüfe die Codewords " + content.koppeln.word1 + " " + content.koppeln.word2);
-		if(codewords == content.koppeln.word1 + " " + content.koppeln.word2) {
-			session = new Session(getLastRegisteredIP(), sock.remoteAddress);
-			logger.logInfo("Verbindung zwischen Client (" + getLastRegisteredIP() + ") und VA(" + getIP(sock.remoteAddress) + ") erstellt.");
-			endConnection(sock, isHttp, headers.get(200), '{"answer": "CONNECTED"}');
-		} else {
-			logger.logInfo("VA hat falsche Codewörter übergeben.");
-			endConnection(sock, isHttp, headers.get(400), '{"answer": "WRONG CODEWORDS"}');
+	session.vaIP = getIP(socket.remoteAddress);
+	if(json.koppeln != undefined) {
+		logger.logInfo("Alexa möchte sich mit einem Client verbinden.");
+		console.log("Alexa möchte sich mit einem Client verbinden."); //DEBUG
+		var vaCodewords = json.koppeln.word1 + " " + json.koppeln.word2;
+		if(!session.isReadyToPair) {
+			endAlexaConnection(socket, "Client möchte bisher keine Kopplung herstellen.");
+		} else if(session.codewords == vaCodewords) {
+			console.log("Verbindung zwischen Client (" + session.clientIP + ") und VA(" + session.vaIP + ") erstellt."); //DEBUG
+			logger.logInfo("Verbindung zwischen Client (" + session.clientIP + ") und VA(" + session.vaIP + ") erstellt.");
+			endAlexaConnection(socket, "Mit Client gekoppelt.");
+		} else if(session.codewords != vaCodewords) {
+			endAlexaConnection(socket, "Falsche Codewörter, es findet keine Kopplung statt.");
 		}
 	}
-}
-
-function Session(clientIP, vaIP) {
-	this.clientIP = getIP(clientIP);
-	this.vaIP = getIP(vaIP);
 }
