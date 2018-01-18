@@ -38,11 +38,11 @@ function Request(header, protocol, data) {
  * dar, bestehend aus:
  * Client IP, Voice Assistent IP und den vom Client festgelegten Codewörtern.
  */
-function Session(clientIP, vaIP, readyToPair, codeword) {
+function Session(clientIP, vaIP, readyToPair, codewords) {
 	this.clientIP = getIP(clientIP);
 	this.vaIP = getIP(vaIP);
   this.readyToPair = readyToPair;
-  this.codeword = codeword;
+  this.codewords = codewords;
 }
 
 
