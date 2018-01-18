@@ -23,6 +23,7 @@ function splitRequest(data) {
 		return splitArr;
 }
 
+
 /* getJSON
  * Entfernt alle Chars vor und nach den geschweiften Klammern des JSON.
  * Wurden keine geschweiften Klammern gefunden wird '-1' zurückgegeben.
@@ -39,6 +40,7 @@ function getJSON(data) {
 	// Alles vor und nach den geschweiften Klammern entfernen.
 	return data.toString().substring(firstCurlyBracket, lastCurlyBracket+1);
 }
+
 
 function getLastIndexOf(string, char) {
 	for(var i = string.length; i > 0; i--) {
@@ -130,31 +132,57 @@ function getIP(ipString) {
 	return ipString;
 }
 
-function isKnownDevice(ip) {
-	for(var i = 0; i < knownIPs.length; i++) {
-		console.log("Bekannte IP: " + knownIPs[i]);
-		if(knownIPs[i] == getIP(ip)) {
+/* isKnownDevice
+ * Überprüft ob eine IP bereits in einem Array aus IPs vorhanden ist.
+ * Liefert true wenn die IP vorhanden ist, ansonsten false.
+ */
+function isKnownDevice(ipArr, ip) {
+	for(var i = 0; i < ipArr.length; i++) {
+		console.log("Bekannte IP: " + ipArr[i]); //DEBUG
+		if(ipArr[i] == getIP(ip)) {
 			return true;
 		}
 	}
-	knownIPs.push(getIP(ip));
 	return false;
 }
 
-function registerDevice(ip) {
-	return isKnownDevice(ip);
+
+/* registerDevice
+ * Ist eine IP noch nicht vorhanden, wird diese in das Array aus IPs
+ * geschrieben.
+ * Liefert true wenn die IP registriert wurde, ansonsten false.
+ */
+function registerDevice(ipArr, ip) {
+  knownDevice = isKnownDevice(ipArr, ip);
+
+  if(!knownDevice) {
+    ipArr.push(getIP(ip));
+    return true;
+  }
+
+	return false;
 }
 
-function unregisterDevice(ip) {
-	var tempArr = knownIPs;
-	for(var i = 0; i < knownIPs.length; i++) {
-		if(knownIPs[i] != getIP(ip)) {
-			tempArr.push(knownIPs[i]);
+
+/* unregisterDevice
+ * Ist eine IP bereits registriert, wird diese aus dem Array aus IPs entfernt.
+ * Gibt das Array aus IPs zurück.
+ */
+function unregisterDevice(ipArr, ip) {
+	var tempArr = ipArr;
+	for(var i = 0; i < ipArr.length; i++) {
+		if(ipArr[i] != getIP(ip)) {
+			tempArr.push(ipArr[i]);
 		}
 	}
-	knownIPs = tempArr;
+	ipArr = tempArr;
+  return ipArr;
 }
 
-function getLastRegisteredIP() { //DEBUG
-	return knownIPs[knownIPs.length-1];
+
+/* getLastRegisteredIP
+ * Liefert die letzte registrierte IP des Arrays aus IPs zurück.
+ */
+function getLastRegisteredIP(ipArr) {
+	return ipArr[ipArr.length-1];
 }
