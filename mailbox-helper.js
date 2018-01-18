@@ -33,6 +33,18 @@ function Request(header, protocol, data) {
 }
 
 
+/* Session
+ * Dieses Objekt stellt eine Verbindung zwischen Client und Voice Assistent
+ * dar, bestehend aus:
+ * Client IP, Voice Assistent IP und den vom Client festgelegten Codewörtern.
+ */
+function Session(clientIP, vaIP, codeword) {
+	this.clientIP = getIP(clientIP);
+	this.vaIP = getIP(vaIP);
+  this.codeword = codeword;
+}
+
+
 /* splitRequest
  * Teilt den erhaltenen Request in Header und JSON-Datei auf.
  * Rückgabe:
