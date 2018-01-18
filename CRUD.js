@@ -1,3 +1,10 @@
+/* Dateiname: CRUD.js
+ * Beinhaltet grundlegende Datenbankoperationen für die Server Datenbank.
+ *
+ * Autor: Peter Dick
+ * Seit: 19.01.2017
+ */
+
 openDB = function() {
 	const sqlite3 = require('sqlite3').verbose();
 	let db = new sqlite3.Database('./WebDB.db', (err) => {
@@ -48,7 +55,7 @@ exports.insertClient = function(IPAdr, MACAdr, key) {
 }
 
 exports.insertVA = function(clientID, geraeteID, MACAdr) {
-    let db = openDB();    
+    let db = openDB();
     db.run('INSERT INTO VA(ClientID, GeraeteID, MACAdresse) VALUES(?, ?, ?)',[clientID, geraeteID, MACAdr], function(err) {
 	    if(err) {
 		    return console.error(err.message);
