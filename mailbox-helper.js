@@ -115,28 +115,28 @@ function getLastIndexOf(string, char) {
  * Überprüft welches Protokoll der Request verwendet.
  * Dazu wird im Header nach einer Zeichenkette gesucht.
  * Rückgabe:
- * 0 wenn das verwendete Protokoll unbekannt ist, vermutlich wird TCP verwendet.
- * 1 wenn das HTTPS Protokoll verwendet wird.
- * 2 wenn das HTTP Protokoll verwendet wird.
+ * tcp wenn das verwendete Protokoll unbekannt ist, vermutlich wird TCP verwendet.
+ * https wenn das HTTPS Protokoll verwendet wird.
+ * http wenn das HTTP Protokoll verwendet wird.
  */
 function checkUsedProtocol(header) {
   if(header == null) {
     // Unbekanntes Protokoll, vermutlich TCP-Request
     logger.logInfo("Das verwendete Protokoll des Request ist Unbekannt (TCP).");
     console.log("TCP-Request:"); //DEBUG
-    return 0;
+    return "tcp";
   } else if(header.toString().match(/https/i)) {
     // HTTPs Header
     logger.logInfo("Das verwendete Protokoll des Request ist HTTPS.");
     console.log("HTTPS-Request:"); //DEBUG
     console.log("\n"+header+"\n"); //DEBUG
-    return 1;
+    return "https";
   } else if(header.toString().match(/http/i)) {
     // HTTP Header
     logger.logInfo("Das verwendete Protokoll des Request ist HTTP.");
     console.log("HTTP-Request:"); //DEBUG
     console.log("\n"+header+"\n"); //DEBUG
-    return 2;
+    return "http";
   }
 }
 
