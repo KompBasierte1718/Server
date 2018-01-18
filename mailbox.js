@@ -7,6 +7,7 @@ var isReadyToPair = false;
 var codewords = null;
 var knownIPs = new Array();
 var session = null;
+var befehl = null;
 
 /* *** Starte Server *** */
 const PORT = 41337;
@@ -62,7 +63,7 @@ function onClientConnected_ServerEvent(sock) {
 							handleAlexaRequest(content, sock, isHttp, headers);
 							break;
 						default:
-							if(content.result.metadata.intentName != null) {
+							if(content.result != undefined) {
 								handleGoogleRequest(content, sock, isHttp, headers);
 								break;
 							} else {
@@ -102,26 +103,40 @@ function endConnection(socket, isHttp, httpHeader, data) {
  * Behandelt Anfragen des Clients.
  */
 function handleClientRequest(content, sock, isHttp, headers, isRegistered) {
+	// endConnection nicht möglich, daher wird beim client ausscließlich die
+	// write() Methode genutzt.
 	logger.logInfo("Ein PC Client hat sich verbunden!");
 	console.log("Gerät: PC Client"); //DEBUG
 	if(!isKnownDevice(sock.remoteAddress)) { // Instanziierung einer neuen Verbindung
 		logger.logInfo("Neue Registrierung vom Client angefordert.");
+		logger.logInfo("Passwort: " + content.password);
 		console.log("Bereit zur Paarung!"); //DEBUG
 		console.log("Passwort: " + content.password); //DEBUG
 		codewords = content.password;
 		isReadyToPair = true;
-		endConnection(sock, isHttp, headers.get(200), '{"answer": "WAITING FOR VA"}');
+		sock.write('{"answer": "WAITING FOR VA"}');
+		//endConnection(sock, isHttp, headers.get(200), '{"answer": "WAITING FOR VA"}');
 	} else { // Die Verbindung besteht bereits.
+		console.log("Bereits bekannter PC Client"); //DEBUG
+		logger.logInfo("Bereits bekannter PC Client");
 		if(content.unregister) { // Client will die Registrierung aufheben.
 			logger.logInfo("Registrierung des Clients wird entfernt.");
 			console.log("Client Registrierung wird entfernt."); //DEBUG
 			unregisterDevice(sock.remoteAddress);
-			endConnection(sock, isHttp, headers.get(200), '{"answer": "UNREGISTERED"}');
-		} else {
-			if(content.instructions) {
+			sock.write('{"answer": "UNREGISTERED"}');
+			//endConnection(sock, isHttp, headers.get(200), '{"answer": "UNREGISTERED"}');
+		} else if(content.instructions) {
 				// Hier werden Befehle an den Anfrageneden Client gesendet!
-				endConnection(sock, isHttp, headers.get(200), '{"answer": "Mach deine Hose zu!"}');
-			}
+				if(befehl != null) {
+					logger.logInfo("Sende Befehle an PC Client");
+					console.log("Sende Befehle an PC Client"); //DEBUG
+					sock.write('{"answer": "NEW COMMAND", "program": "' + befehl + '"}');
+				} else {
+					logger.logInfo("Kein Befehl vorhanden!");
+					console.log("Kein Befehl vorhanden!"); //DEBUG
+					sock.write('{"answer": "NO COMMANDS"}');
+				}
+				//endConnection(sock, isHttp, headers.get(200), '{"answer": "Mach deine Hose zu!"}');
 		}
 	}
 }
@@ -148,14 +163,17 @@ function handleGoogleRequest(content, sock, isHttp, headers) {
 	} else if(content.result.metadata.intentName == "Entkoppeln") {
 		session = null
 		logger.logInfo("Verbindung zwischen Client (" + getLastRegisteredIP() + ") und VA(" + getIP(sock.remoteAddress) + ") gelöscht.");
-		endConnection(sock, isHttp, headers.get(200), '{"answer": "DISCONNECTED"}');
-	} else if(content.result.metadata.intentName == "Befehl") {
+		endConnection(sock, isHttp, headers.get(200), '{"speech": "Verbindung mit Client aufgehoben.","displayText": "Verbindung mit Client aufgehoben."}');
+	} else if(content.result.metadata.intentName == "Programm starten") {
 		if(session != null) {
-			logger.logInfo("Neuer Befehl: " + content.befehl);
-			endConnection(sock, isHttp, headers.get(200), '{"answer": "DISCONNECTED"}');
+			befehl = content.result.parameters.program;
+			logger.logInfo("Neuer Befehl: " + befehl);
+			console.log("Neuer Befehl: " + befehl);
+			endConnection(sock, isHttp, headers.get(200), '{"speech": "Gebe den Befehl weiter.","displayText": "Gebe den Befehl weiter."}');
 		} else {
-			logger.logInfo("Befehl erhalten doch keine Session vorhanden.")
-			endConnection(sock, isHttp, headers.get(400), '{"answer": "NO SESSION"}');
+			logger.logInfo("Befehl erhalten doch keine Session vorhanden.");
+			console.log("Befehl erhalten doch keine Session vorhanden.");
+			endConnection(sock, isHttp, headers.get(400), '{"speech": "Keine Verbindung zu einem Client vorhanden!","displayText": "Keine Verbindung zu einem Client vorhanden!"}');
 		}
 	}
 }
@@ -226,13 +244,6 @@ function splitRequest(data) {
 function getJSON(data) {
 	var firstCurlyBracket = data.indexOf("{");
 	var lastCurlyBracket = getLastIndexOf(data, "}");
-
-	//if(lastCurlyBracket == -1) {
-		// Fehler wenn die letzte geschlossene Klammer vin hinten gesucht werden soll
-		//lastCurlyBracket = data.indexOf("}");
-		//if(lastCurlyBracket < data.length-10)
-		//	lastCurlyBracket = data.length-1;
-	//}
 
 	if(firstCurlyBracket == -1 || lastCurlyBracket == -1) {
 		// Keine JSON-Datei
@@ -335,7 +346,8 @@ function getIP(ipString) {
 
 function isKnownDevice(ip) {
 	for(var i = 0; i < knownIPs.length; i++) {
-		if(knownIPs == getIP(ip)) {
+		console.log("Bekannte IP: " + knownIPs[i]);
+		if(knownIPs[i] == getIP(ip)) {
 			return true;
 		}
 	}
