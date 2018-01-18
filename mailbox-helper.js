@@ -51,15 +51,19 @@ function splitRequest(data) {
  * Substring von der ersten geschweiften Klammer bis zur einschließlich letzten.
  * null wenn eine der beiden Klammern nicht gefunden wurde.
  */
-function getJSON(data) {
+function getJSONFromBody(data) {
 	var firstCurlyBracket = data.indexOf("{");
 	var lastCurlyBracket = getLastIndexOf(data, "}");
 
 	if(firstCurlyBracket == -1 || lastCurlyBracket == -1) {
 		// Keine (valide) gefunden JSON-Datei.
+    logger.logInfo("Der Request beinhaltet keine JSON-Datei.");
+		console.log("Der Request beinhaltet keine JSON-Datei."); //DEBUG
 		return null;
 	}
 
+  logger.logInfo("Der Request beinhaltet eine JSON-Datei.");
+  console.log("Der Request beinhaltet eine JSON-Datei."); //DEBUG
 	// Alles vor und nach den geschweiften Klammern entfernen.
 	return data.toString().substring(firstCurlyBracket, lastCurlyBracket + 1);
 }
@@ -97,27 +101,6 @@ function getLastIndexOf(string, char) {
 		}
 	}
 	return -1;
-}
-
-
-/* isRequestWithJSONData
- * Validiert den Request und erzeugt Ausgaben in der Log-Datei.
- * Rückgabe:
- * true wenn es sich bei der Anfrage um eine JSON-Datei handelt, ansonsten
- * false.
- */
-function isRequestWithJSONData(jsonData) {
-	if(jsonData == "-1") {
-		// Keine JSON-Datei vorhanden
-		logger.logInfo("Der Request beinhaltet keine JSON-Datei.");
-		console.log("Der Request beinhaltet keine JSON-Datei."); //DEBUG
-    return false;
-	} else {
-		// JSON-Datei vorhanden
-		logger.logInfo("Der Request beinhaltet eine JSON-Datei.");
-		console.log("Der Request beinhaltet eine JSON-Datei."); //DEBUG
-		return true;
-	}
 }
 
 
