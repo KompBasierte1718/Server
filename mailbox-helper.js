@@ -10,22 +10,26 @@
  * Seit:  18.01.2018
  */
 
- // HTTP-Header Antwort Header
+
+ // HTTP Antwort Header
  var headers = new Map();
  headers.set(200, 'HTTP/1.1 200 OK\r\n'
             +'Content-Type: application/json\r\n'+'Connection: close\r\n\r\n');
  headers.set(400, 'HTTP/1.1 400 Bad Request\r\n'
             +'Content-Type: application/json\r\nConnection: close\r\n\r\n');
 
+
 /* splitRequest
- * Liefert ein Array  mit zwei Elementen zurück.
- * Erstes Element ist der HTTP Header, zweites Element ist die JSON.
- * Im Fehlerfall ist eines oder sind beide Elemente '-1'.
+ * Teilt den erhaltenen Request in Header und JSON-Datei auf.
+ * Rückgabe:
+ * Ein Array bestehend aus Header und JSON-Datei.
+ * Die Felder beinhalten null wenn kein Header oder keine JSON-Datei gefunden
+ * wurde.
  */
 function splitRequest(data) {
 		var splitArr = new Array();
-		splitArr.push('-1');
-		splitArr.push('-1');
+		splitArr.push(null);
+		splitArr.push(null);
 
 		if(data == undefined || data == null || data == "") {
 			return splitArr;
@@ -42,16 +46,18 @@ function splitRequest(data) {
 
 
 /* getJSON
- * Entfernt alle Chars vor und nach den geschweiften Klammern des JSON.
- * Wurden keine geschweiften Klammern gefunden wird '-1' zurückgegeben.
+ * Sucht nach der ersten und letzten geschweiften Klammer innerhalb der Daten.
+ * Rückgabe:
+ * Substring von der ersten geschweiften Klammer bis zur einschließlich letzten.
+ * null wenn eine der beiden Klammern nicht gefunden wurde.
  */
 function getJSON(data) {
 	var firstCurlyBracket = data.indexOf("{");
 	var lastCurlyBracket = getLastIndexOf(data, "}");
 
 	if(firstCurlyBracket == -1 || lastCurlyBracket == -1) {
-		// Keine JSON-Datei
-		return "-1";
+		// Keine (valide) gefunden JSON-Datei.
+		return null;
 	}
 
 	// Alles vor und nach den geschweiften Klammern entfernen.
@@ -59,9 +65,30 @@ function getJSON(data) {
 }
 
 
+/* getHeader
+ * Sucht nach der Zeichenkette "\r\n\r\n", welche am Ende eines Headers steht,
+ * innerhalb der Empfangenen Daten.
+ * Rückgabe:
+ * Substring vom Anfang der Daten bis zur Zeichenkette "\r\n\r\n".
+ * null wenn die Zeichenkette "\r\n\r\n" nicht gefunden wurde.
+ */
+function getHeader(data) {
+  var headerEnding = data.indexOf("\r\n\r\n");
+	if(headerEnding == -1) {
+		// Kein Header vorhanden.
+		return null;
+	}
+
+	// JSON entfernen und nur den HTTP-Header zurückgeben.
+	return data.toString().substring(0, headerEnding);
+}
+
+
 /* getLastIndexOf
- * Liefert den letzten Index eines Zeichens innerhalb eines Strings zurück.
- * Konnte das Zeichen nicht gefunden werden, wird -1 zurück gegeben.
+ * Sucht das letzte Vorkommen eines Zeichens innerhalb eines Strings.
+ * Rückgabe:
+ * Index des Zeichens im String
+ * -1 wenn das Zeichen nicht gefunden wurde.
  */
 function getLastIndexOf(string, char) {
 	for(var i = string.length; i > 0; i--) {
@@ -73,66 +100,51 @@ function getLastIndexOf(string, char) {
 }
 
 
-/* getHeader
- * Prüft ob der String 'HTTP/http' im Request vorhanden ist.
- * Sollte das der Fall sein wird alles vor der ersten geschweiften Klammer
- * zurückgegeben.
- * Wurden keine geschweiften Klammern gefunden wird der String wieder
- * zurückgegeben.
- * Wurde 'HTTP/http' nicht gefunden wird '-1' zurückgegeben.
- */
-function getHeader(data) {
-  var firstCurlyBracket = data.indexOf("{");
-	if(firstCurlyBracket == -1) {
-		// Keine JSON vorhanden.
-		return data;
-	}
-
-	// JSON entfernen und nur den HTTP-Header zurückgeben.
-	return data.toString().substring(0, firstCurlyBracket);
-}
-
-
-/* isParsableRequest
+/* isRequestWithJSONData
  * Validiert den Request und erzeugt Ausgaben in der Log-Datei.
- * Liefert true zurück wenn es sich bei der Anfrage um eine JSON-Datei handelt.
+ * Rückgabe:
+ * true wenn es sich bei der Anfrage um eine JSON-Datei handelt, ansonsten
+ * false.
  */
-function isParsableRequest(jsonData) {
+function isRequestWithJSONData(jsonData) {
 	if(jsonData == "-1") {
-		// Keine JSON vorhanden
-		logger.logInfo("Keine JSON-Datei erhalten.");
-		console.log("Keine JSON-Datei erhalten."); //DEBUG
+		// Keine JSON-Datei vorhanden
+		logger.logInfo("Der Request beinhaltet keine JSON-Datei.");
+		console.log("Der Request beinhaltet keine JSON-Datei."); //DEBUG
     return false;
 	} else {
-		// HTTP-Request
-		logger.logInfo("JSON-Datei erhalten.");
-		console.log("JSON-Datei erhalten."); //DEBUG
+		// JSON-Datei vorhanden
+		logger.logInfo("Der Request beinhaltet eine JSON-Datei.");
+		console.log("Der Request beinhaltet eine JSON-Datei."); //DEBUG
 		return true;
 	}
 }
 
 
 /* checkUsedProtocol
- * Validiert den Request und erzeugt Ausgaben in der Log-Datei.
- * Liefert true zurück wenn es sich bei der Anfrage um einen HTTP-Request
- * handelt.
+ * Überprüft welches Protokoll der Request verwendet.
+ * Dazu wird im Header nach einer Zeichenkette gesucht.
+ * Rückgabe:
+ * 0 wenn das HTTPS Protokoll verwendet wird.
+ * 1 wenn das HTTP Protokoll verwendet wird.
+ * 2 wenn das verwendete Protokoll unbekannt ist, vermutlich wird TCP verwendet.
  */
 function checkUsedProtocol(header) {
   if(data.toString().match(/https/i)) {
     // HTTPs Header
-    logger.logInfo("HTTPs-Request");
-    console.log("HTTPs-Request:"); //DEBUG
+    logger.logInfo("Das verwendete Protokoll des Request ist HTTPS.");
+    console.log("HTTPS-Request:"); //DEBUG
     console.log("\n"+header+"\n"); //DEBUG
     return 0;
   } else if(data.toString().match(/http/i)) {
     // HTTP Header
-    logger.logInfo("HTTP-Request");
+    logger.logInfo("Das verwendete Protokoll des Request ist HTTP.");
     console.log("HTTP-Request:"); //DEBUG
     console.log("\n"+header+"\n"); //DEBUG
     return 1;
   } else {
 		// Unbekanntes Protokoll, vermutlich TCP-Request
-		logger.logInfo("TCP-Request");
+		logger.logInfo("Das verwendete Protokoll des Request ist Unbekannt (TCP).");
 		console.log("TCP-Request:"); //DEBUG
     return 2;
 	}
@@ -140,6 +152,8 @@ function checkUsedProtocol(header) {
 
 /* getIP
  * Schneidet die IP aus socket.remoteAddress
+ * Rückgabe:
+ * Eine IP-Adresse.
  */
 function getIP(ipString) {
 	var lastColon = ipString.toString().lastIndexOf(":");
@@ -148,14 +162,16 @@ function getIP(ipString) {
 	return ipString;
 }
 
+
 /* isKnownIP
  * Überprüft ob eine IP bereits in einem Array aus IPs vorhanden ist.
- * Liefert true wenn die IP vorhanden ist, ansonsten false.
+ * Rückgabe:
+ * true wenn die IP vorhanden ist, ansonsten false.
  */
 function isKnownIP(ipArr, ip) {
 	for(var i = 0; i < ipArr.length; i++) {
-		console.log("Bekannte IP: " + ipArr[i]); //DEBUG
 		if(ipArr[i] == getIP(ip)) {
+      logger.logInfo("IP " + ipArr[i] + " ist bereits bekannt.");
 			return true;
 		}
 	}
@@ -166,7 +182,8 @@ function isKnownIP(ipArr, ip) {
 /* registerIP
  * Ist eine IP noch nicht vorhanden, wird diese in das Array aus IPs
  * geschrieben.
- * Liefert true wenn die IP registriert wurde, ansonsten false.
+ * Rückgabe:
+ * true wenn die IP registriert wurde, ansonsten false.
  */
 function registerIP(ipArr, ip) {
   knownIP = isKnownIP(ipArr, ip);
@@ -183,7 +200,8 @@ function registerIP(ipArr, ip) {
 
 /* unregisterIP
  * Ist eine IP bereits registriert, wird diese aus dem Array aus IPs entfernt.
- * Gibt das Array aus IPs zurück.
+ * Rückgabe:
+ * Array aus IPs.
  */
 function unregisterIP(ipArr, ip) {
 	var tempArr = ipArr;
@@ -198,7 +216,8 @@ function unregisterIP(ipArr, ip) {
 
 
 /* getLastRegisteredIP
- * Liefert die letzte registrierte IP des Arrays aus IPs zurück.
+ * Rückgabe:
+ * Die letzte registrierte IP des Arrays.
  */
 function getLastRegisteredIP(ipArr) {
 	return ipArr[ipArr.length-1];
