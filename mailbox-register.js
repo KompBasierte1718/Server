@@ -10,8 +10,8 @@ const helper = require('./mailbox-helper');
  * Client IP, Voice Assistent IP und den vom Client festgelegten Codewörtern.
  */
 function Session(clientIP, vaIP, readyToPair, codewords) {
-	this.clientIP = getIP(clientIP);
-	this.vaIP = getIP(vaIP);
+  this.clientIP = helper.getIP(clientIP);
+  this.vaIP = helper.getIP(vaIP);
   this.readyToPair = readyToPair;
   this.codewords = codewords;
 }
@@ -19,7 +19,7 @@ function Session(clientIP, vaIP, readyToPair, codewords) {
 
 /* *** Globale Zustandsvariablen *** */
 var ipArr = new Array();
-var session = new helper.Session(null, null, false, null);
+var session = new Session(null, null, false, null);
 var befehl = null;
 
 
@@ -42,8 +42,9 @@ console.log("Registrierungs-Server gestartet. Port: " + port); //DEBUG
  */
 function clientConnectedEvent(sock) {
 	console.log("\n####################################################"); //DEBUG
-	console.log("Neue Verbindung von: " + getIP(sock.remoteAddress)); //DEBUG
-	logger.logInfo("Neue Verbindung von: " + getIP(sock.remoteAddress));
+	console.log("Neue Verbindung von: " + helper.getIP(sock.remoteAddress)); //DEBUG
+	logger.logInfo("####################################################");
+	logger.logInfo("Neue Verbindung von: " + helper.getIP(sock.remoteAddress));
 
 	sock.on('data', function(data) {
 		console.log("Daten vom Client erhalten."); //DEBUG
@@ -71,10 +72,10 @@ function clientConnectedEvent(sock) {
 
 	// Client möchte die Verbindung beenden.
 	sock.on('end', function() {
-		console.log("Client möchte Verbindung schließen!"); // DEBUG
-		logger.logInfo("Verbindung auf Anfrage von " + getIP(sock.remoteAddress)
-										+ " geschloßen.");
+		console.log("Client bestätigt das Ende der Verbindung."); // DEBUG
+		logger.logInfo("Client bestätigt das Ende der Verbindung.");
 		sock.end();
+		logger.logInfo("####################################################");
 		console.log("####################################################\n"); //DEBUG
 	}); // ENDE socket 'end'
 }
@@ -86,7 +87,7 @@ function endConnection(socket, protocol, status, message) {
 	console.log("Verbindung wird geschloßen!"); //DEBUG
 	logger.logInfo("Verbindung wird geschloßen!");
 	if(protocol == "http"){
-		socket.end(helper.headers.get(status) + message);
+		socket.end(helper.headers(status) + message);
 	} else {
 		socket.end(message);
 	}
