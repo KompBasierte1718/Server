@@ -76,11 +76,6 @@ function getLastIndexOf(string, char) {
  * Wurde 'HTTP/http' nicht gefunden wird '-1' zurückgegeben.
  */
 function getHeader(data) {
-	if(!data.toString().match(/http/i)) {
-		// Kein HTTP Header
-		return "-1";
-	}
-
   var firstCurlyBracket = data.indexOf("{");
 	if(firstCurlyBracket == -1) {
 		// Keine JSON vorhanden.
@@ -111,23 +106,29 @@ function isParsableRequest(jsonData) {
 }
 
 
-/* isHTTPHeader
+/* checkUsedProtocol
  * Validiert den Request und erzeugt Ausgaben in der Log-Datei.
  * Liefert true zurück wenn es sich bei der Anfrage um einen HTTP-Request
  * handelt.
  */
-function isHTTPHeader(httpHeader) {
-	if(httpHeader == "-1") {
-		// Kein HTTP-Request
+function checkUsedProtocol(header) {
+  if(data.toString().match(/https/i)) {
+    // HTTPs Header
+    logger.logInfo("HTTPs-Request");
+    console.log("HTTPs-Request:"); //DEBUG
+    console.log("\n"+header+"\n"); //DEBUG
+    return 0;
+  } else if(data.toString().match(/http/i)) {
+    // HTTP Header
+    logger.logInfo("HTTP-Request");
+    console.log("HTTP-Request:"); //DEBUG
+    console.log("\n"+header+"\n"); //DEBUG
+    return 1;
+  } else {
+		// Unbekanntes Protokoll, vermutlich TCP-Request
 		logger.logInfo("TCP-Request");
 		console.log("TCP-Request:"); //DEBUG
-    return false;
-	} else {
-		// HTTP-Request
-		logger.logInfo("HTTP-Request");
-		console.log("HTTP-Request:"); //DEBUG
-		console.log("\n"+httpHeader+"\n"); //DEBUG
-		return true;
+    return 2;
 	}
 }
 
