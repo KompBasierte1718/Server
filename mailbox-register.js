@@ -1,6 +1,8 @@
 const net = require('net');
-var logger = require('./logger');
 var parseJSON = require('json-parse-async');
+var logger = require('./logger');
+var helper = require('./mailbox-helper');
+
 
 /* *** Globale Zustandsvariablen *** */
 var isReadyToPair = false;
