@@ -1,3 +1,14 @@
+/* Datei: mailbox-register.js
+ * Der Registrierungs-Server, auf Port 51337.
+ * Es wird eine JSON Anfrage erwartet.
+ * Anhand derer entschieden wird welcher Client es ist und ob dieser registriert
+ * werden soll.
+ *
+ * Autor: Daniel Nagel
+ * Seit:  18.01.2018
+ */
+
+
 const net = require('net');
 const parseJSON = require('json-parse-async');
 const logger = require('./logger');
@@ -9,9 +20,10 @@ const helper = require('./mailbox-helper');
  * dar, bestehend aus:
  * Client IP, Voice Assistent IP und den vom Client festgelegten Codewörtern.
  */
-function Session(clientIP, vaIP, readyToPair, codewords) {
+function Session(clientIP, vaIP, vaName, readyToPair, codewords) {
   this.clientIP = helper.getIP(clientIP);
   this.vaIP = helper.getIP(vaIP);
+  this.vaName = vaName;
   this.readyToPair = readyToPair;
   this.codewords = codewords;
 }
@@ -19,7 +31,7 @@ function Session(clientIP, vaIP, readyToPair, codewords) {
 
 /* *** Globale Zustandsvariablen *** */
 var ipArr = new Array();
-var session = new Session(null, null, false, null);
+var session = new Session(null, null, null, false, null);
 var befehl = null;
 
 
@@ -104,12 +116,21 @@ function endFlawedConnection(socket, protocol, errLog, errJSON) {
 	endConnection(socket, protocol, 400, '{"error": "' + errJSON + '"}');
 }
 
+
+/* endGoogleConnection
+ * Beendet eine Google Verbindung. Hierbei muss die zurück gesendete JSON-Datei
+ * ein bestimmtes Format vorweisen.
+ */
 function endGoogleConnection(socket, message) {
 	console.log(message); //DEBUG
 	logger.logInfo(message);
 	endConnection(socket, "http", 200, '{"speech": "' + message + '","displayText": "' + message + '"}');
 }
 
+
+/* endAlexaConnection
+ * Beendet eine Alexa verbindung.
+ */
 function endAlexaConnection(socket, message) {
 	console.log(message); //DEBUG
 	logger.logInfo(message);
@@ -141,6 +162,7 @@ function checkDevice(json, socket, protocol) {
 	}
 }
 
+
 /* handleClientRequest
  * Behandelt Anfragen des Clients.
  */
@@ -158,8 +180,35 @@ function handleClientRequest(json, socket, protocol) {
 		console.log("Client möchte sich mit VA verbinden. Codewörter: " + session.codewords); //DEBUG
 		// socket.write('{"answer": "WAITING FOR VA"}'); // TEST
 		endConnection(socket, protocol, 200, '{"answer": "WAITING FOR VA"}'); // TEST
-	}
+	} else {
+    // Die IP ist bereits bekannt.
+    if(json.getDevice == "true") {
+      // Client möchte die Kopplung mit dem VA bestätigen und brauch den Geräte-
+      // Namen
+      logger.logInfo("Client fordert Informationen über Voice Assistent an.");
+      logger.logInfo("VA: " + session.vaName + "(" + session.vaIP + ").");
+      console.log("Client fordert Informationen über Voice Assistent an."); //DEBUG
+      // socket.write('{"answer": "COUPLING DONE."}'); // TEST
+      endConnection(socket, protocol, 200, '{"answer": "DEVICE:' + session.vaName + '"}'); // TEST
+    } else if(json.koppeln == "true") {
+      // Client möchte sich mit dem bekannten VA koppeln.
+      logger.logInfo("Client möchte Kopplung mit " + session.vaName + "(" + session.vaIP + ").");
+      console.log("Client möchte Kopplung mit " + session.vaName + "(" + session.vaIP + ")."); //DEBUG
+  		// socket.write('{"answer": "COUPLING DONE."}'); // TEST
+  		endConnection(socket, protocol, 200, '{"answer": "COUPLING DONE."}'); // TEST
+    } else if (json.koppeln == "false") {
+      // Client möchte sich mit dem bekannten VA nicht koppeln.
+      session = new Session(null, null, null, false, null);
+      logger.logInfo("Client möchte keine Kopplung. Session wird zurückgesetzt.");
+      console.log("Client möchte keine Kopplung. Session wird zurückgesetzt."); //DEBUG
+  		// socket.write('{"answer": "NO COUPLING. SESSION RESET."}'); // TEST
+  		endConnection(socket, protocol, 200, '{"answer": "NO COUPLING. SESSION RESET."}'); // TEST
+    } else {
+      endFlawedConnection(socket, protocol, "Unerwartete Anfrage vom Client.", "unexpected request");
+    }
+  }
 }
+
 
 /* handleGoogleRequest
  * Behandelt Anfragen des Google VAs.
@@ -168,6 +217,7 @@ function handleGoogleRequest(json, socket, protocol) {
 	logger.logInfo("Google Home hat sich verbunden!");
 	console.log("Gerät: Google Home"); //DEBUG
 	session.vaIP = getIP(socket.remoteAddress);
+  session.vaName = "Google Home";
 	if("Koppeln" == json.result.metadata.intentName) {
 		logger.logInfo("Google Home möchte sich mit einem Client verbinden.");
 		console.log("Google Home möchte sich mit einem Client verbinden."); //DEBUG
@@ -182,12 +232,14 @@ function handleGoogleRequest(json, socket, protocol) {
 			endGoogleConnection(socket, "Falsche Codewörter, es findet keine Kopplung statt.");
 		}
 	} else if("Entkoppeln" == json.result.metadata.intentName) {
-		session.vaIP = null
+		session.vaIP = null;
+    session.vaName = null;
 		console.log("Verbindung zwischen Client (" + getLastRegisteredIP() + ") und VA(" + session.vaIP + ") gelöscht.");
 		logger.logInfo("Verbindung zwischen Client (" + getLastRegisteredIP() + ") und VA(" + session.vaIP + ") gelöscht.");
 		endGoogleConnection(socket, "Kopplung mit Client aufgehoben.");
 	}
 }
+
 
 /* handleAlexaRequest
  * Behandelt Anfragen des Alexa VAs.
@@ -196,6 +248,7 @@ function handleAlexaRequest(json, socket, protocol) {
 	logger.logInfo("Alexa hat sich verbunden!");
 	console.log("Gerät: Alexa"); //DEBUG
 	session.vaIP = getIP(socket.remoteAddress);
+  session.vaName = "Alexa";
 	if(json.koppeln != undefined) {
 		logger.logInfo("Alexa möchte sich mit einem Client verbinden.");
 		console.log("Alexa möchte sich mit einem Client verbinden."); //DEBUG
