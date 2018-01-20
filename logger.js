@@ -8,13 +8,18 @@
 
 /* *** Globale Variablen *** */
 const logfile = "server.log";
+var server = "";
+
+exports.setServer = function(string) {
+  server = string;
+}
 
 /* logInfo
  * Loggt Information über Ereignisse in einer Datei.
  */
 exports.logInfo = function(data) {
   var fs = require('fs');
-  var logInfo = "[" + createTimeStamp() + " INFO  ]:" + data + "\n";
+  var logInfo = "[" + createTimeStamp() + " INFO  ] {" + server + "} :" + data + "\n";
 	fs.appendFile(logfile, logInfo, function(err) {
 		if(err) throw err;
 	});
@@ -26,7 +31,7 @@ exports.logInfo = function(data) {
  */
 exports.logError = function(funct, data) {
   var fs = require('fs');
-  var logError = "[" + createTimeStamp() + " ERROR ]:" + funct + ": " + data + "\n";
+  var logError = "[" + createTimeStamp() + " ERROR ] {" + server + "} :" + funct + ": " + data + "\n";
 	fs.appendFile(logfile, logError, function(err) {
 		if(err) throw err;
 	});
