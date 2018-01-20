@@ -1,11 +1,20 @@
+/* Datei: logger.js
+ * Loggt Ereignisse vom Server in einer Textdatei.
+ *
+ * Autor: Daniel Nagel
+ * Seit:  18.01.2018
+ */
+
+
+/* *** Globale Variablen *** */
 const logfile = "server.log";
 
 /* logInfo
  * Loggt Information über Ereignisse in einer Datei.
  */
 exports.logInfo = function(data) {
-    var fs = require('fs');
-    var logInfo = "[" + createTimeStamp() + " INFO ]:" + data + "\n";
+  var fs = require('fs');
+  var logInfo = "[" + createTimeStamp() + " INFO  ]:" + data + "\n";
 	fs.appendFile(logfile, logInfo, function(err) {
 		if(err) throw err;
 	});
@@ -16,11 +25,23 @@ exports.logInfo = function(data) {
  * auftrat.
  */
 exports.logError = function(funct, data) {
-    var fs = require('fs');
-    var logError = "[" + createTimeStamp() + " ERROR]:" + funct + ": " + data + "\n";
+  var fs = require('fs');
+  var logError = "[" + createTimeStamp() + " ERROR ]:" + funct + ": " + data + "\n";
 	fs.appendFile(logfile, logError, function(err) {
 		if(err) throw err;
 	});
+}
+
+/* spacer
+ * Eine optische Begrenzung, um den Anfang und das Ende eines log Vorgangs zu
+ * markieren.
+ */
+exports.spacer = function() {
+  var fs = require('fs');
+  var logError = "[" + createTimeStamp() + " SPACER]:+--------------------------------------------+\n";
+  fs.appendFile(logfile, logError, function(err) {
+    if(err) throw err;
+  });
 }
 
 /* createTimeStamp
