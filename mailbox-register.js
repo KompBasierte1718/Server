@@ -8,7 +8,7 @@
  * Seit:  18.01.2018
  */
 
-
+ // Referenzen einbinden.
 const net = require('net');
 const parseJSON = require('json-parse-async');
 const logger = require('./logger');
@@ -32,15 +32,15 @@ function Session(clientIP, vaIP, vaName, readyToPair, codewords) {
 /* *** Globale Zustandsvariablen *** */
 var ipArr = new Array();
 var session = new Session(null, null, null, false, null);
-var befehl = null;
 
 
 /* *** Server initialisieren *** */
-const port = 51337; // Register Port
+const port = 51337; // Registriere Port
 const server = net.createServer(); // Neue Server Instanz.
 
 server.listen(port); // Server Port öffnen.
 server.on('connection', clientConnectedEvent); // Event bei 'connection'
+logger.setServer("register"); // Dem Logger den Namen des Servers übermitteln.
 
 logger.logInfo("Registrierungs-Server gestartet. Port: " + port);
 console.log("Registrierungs-Server gestartet. Port: " + port); //DEBUG
@@ -55,7 +55,7 @@ console.log("Registrierungs-Server gestartet. Port: " + port); //DEBUG
 function clientConnectedEvent(sock) {
 	console.log("\n####################################################"); //DEBUG
 	console.log("Neue Verbindung von: " + helper.getIP(sock.remoteAddress)); //DEBUG
-	logger.logInfo("####################################################");
+	logger.spacer();
 	logger.logInfo("Neue Verbindung von: " + helper.getIP(sock.remoteAddress));
 
 	sock.on('data', function(data) {
@@ -87,7 +87,7 @@ function clientConnectedEvent(sock) {
 		console.log("Client bestätigt das Ende der Verbindung."); // DEBUG
 		logger.logInfo("Client bestätigt das Ende der Verbindung.");
 		sock.end();
-		logger.logInfo("####################################################");
+		logger.spacer();
 		console.log("####################################################\n"); //DEBUG
 	}); // ENDE socket 'end'
 }
@@ -182,7 +182,7 @@ function handleClientRequest(json, socket, protocol) {
 		endConnection(socket, protocol, 200, '{"answer": "WAITING FOR VA"}'); // TEST
 	} else {
     // Die IP ist bereits bekannt.
-    if(json.getDevice == "true") {
+    if(json.getDevice) {
       // Client möchte die Kopplung mit dem VA bestätigen und brauch den Geräte-
       // Namen
       logger.logInfo("Client fordert Informationen über Voice Assistent an.");
