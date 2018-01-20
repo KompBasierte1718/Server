@@ -40,6 +40,7 @@ const server = net.createServer(); // Neue Server Instanz.
 
 server.listen(port); // Server Port öffnen.
 server.on('connection', clientConnectedEvent); // Event bei 'connection'
+server.on('error', errorEvent); // Event bei 'error'
 logger.setServer("register"); // Dem Logger den Namen des Servers übermitteln.
 
 logger.logInfo("Registrierungs-Server gestartet. Port: " + port);
@@ -90,6 +91,31 @@ function clientConnectedEvent(sock) {
 		logger.spacer();
 		console.log("####################################################\n"); //DEBUG
 	}); // ENDE socket 'end'
+
+  // Fehler bei der Verbindung
+  sock.on('error', function() { //DEBUG
+    console.log("Fehler bei der Verbindung"); //DEBUG
+  });
+
+  // Schließen der Verbindung nach Fehler
+  sock.on('close', function() {
+    console.log("Verbindung wird wegen 'close' Event geschloßen."); // DEBUG
+		logger.logInfo("Verbindung wird wegen 'close' Event geschloßen.");
+		sock.end();
+		logger.spacer();
+		console.log("####################################################\n"); //DEBUG
+  });
+}
+
+
+/* errorEvent
+ * Behandelt auftretende Fehler.
+ */
+function errorEvent(error) { //DEBUG
+  console.error("Ein Fehler ist aufgetreten: " + error); //DEBUG
+  logger.logError("connection", "Ein Fehler ist aufgetreten: " + error);
+  server.close();
+  throw error;
 }
 
 /* endConnection
