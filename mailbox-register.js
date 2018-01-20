@@ -237,7 +237,11 @@ function handleGoogleRequest(json, socket, protocol) {
 		console.log("Verbindung zwischen Client (" + getLastRegisteredIP() + ") und VA(" + session.vaIP + ") gelöscht.");
 		logger.logInfo("Verbindung zwischen Client (" + getLastRegisteredIP() + ") und VA(" + session.vaIP + ") gelöscht.");
 		endGoogleConnection(socket, "Kopplung mit Client aufgehoben.");
-	}
+	} else {
+    session.vaIP = null;
+    session.vaName = null;
+		endGoogleConnection(socket, "Unerwartete Anfrage.");
+  }
 }
 
 
@@ -262,5 +266,9 @@ function handleAlexaRequest(json, socket, protocol) {
 		} else if(session.codewords != vaCodewords) {
 			endAlexaConnection(socket, "Falsche Codewörter, es findet keine Kopplung statt.");
 		}
-	}
+	} else {
+    session.vaIP = null;
+    session.vaName = null;
+		endAlexaConnection(socket, "Unerwartete Anfrage.");
+  }
 }
