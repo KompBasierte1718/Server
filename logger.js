@@ -10,14 +10,27 @@
 const logfile = "server.log";
 var server = "";
 
-exports.setServer = function(string) {
+// Zu exportierende Objekte definieren.
+module.exports = {
+  setServer: setServer,
+  logInfo: logInfo,
+  logError: logError,
+  spacer, spacer
+}
+
+
+/* setServer
+ * Logt den gewählten Namen des Server, damit die Logs unterschieden werden
+ * können.
+ */
+function setServer(string) {
   server = string;
 }
 
 /* logInfo
  * Loggt Information über Ereignisse in einer Datei.
  */
-exports.logInfo = function(data) {
+function logInfo(data) {
   var fs = require('fs');
   var logInfo = "[" + createTimeStamp() + " INFO  ] {" + server + "} :" + data + "\n";
 	fs.appendFile(logfile, logInfo, function(err) {
@@ -29,7 +42,7 @@ exports.logInfo = function(data) {
  * Loggt Fehler in einer Datei, mit dem Funktionsnamen in der der Fehler
  * auftrat.
  */
-exports.logError = function(funct, data) {
+function logError(funct, data) {
   var fs = require('fs');
   var logError = "[" + createTimeStamp() + " ERROR ] {" + server + "} :" + funct + ": " + data + "\n";
 	fs.appendFile(logfile, logError, function(err) {
@@ -41,10 +54,10 @@ exports.logError = function(funct, data) {
  * Eine optische Begrenzung, um den Anfang und das Ende eines log Vorgangs zu
  * markieren.
  */
-exports.spacer = function() {
+function spacer() {
   var fs = require('fs');
-  var logError = "[" + createTimeStamp() + " SPACER]:+--------------------------------------------+\n";
-  fs.appendFile(logfile, logError, function(err) {
+  var logSpacer = "[" + createTimeStamp() + " SPACER]:+--------------------------------------------+\n";
+  fs.appendFile(logfile, logSpacer, function(err) {
     if(err) throw err;
   });
 }
