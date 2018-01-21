@@ -88,8 +88,6 @@ function clientConnectedEvent(sock) {
 		console.log("Client bestätigt das Ende der Verbindung."); // DEBUG
 		logger.logInfo("Client bestätigt das Ende der Verbindung.");
 		sock.end();
-		logger.spacer();
-		console.log("####################################################\n"); //DEBUG
 	}); // ENDE socket 'end'
 
   // Fehler bei der Verbindung
@@ -193,7 +191,6 @@ function checkDevice(json, socket, protocol) {
  * Behandelt Anfragen des Clients.
  */
 function handleClientRequest(json, socket, protocol) {
-	// TEST ob endConnection möglich ist statt write.
 	logger.logInfo("Ein PC Client hat sich verbunden!");
 	console.log("Gerät: PC Client"); //DEBUG
 	if(helper.registerIP(ipArr, socket.remoteAddress)) {
@@ -204,8 +201,7 @@ function handleClientRequest(json, socket, protocol) {
 		session.isReadyToPair = true;
 		logger.logInfo("Client möchte sich mit VA verbinden. Codewörter: " + session.codewords);
 		console.log("Client möchte sich mit VA verbinden. Codewörter: " + session.codewords); //DEBUG
-		// socket.write('{"answer": "WAITING FOR VA"}'); // TEST
-		endConnection(socket, protocol, 200, '{"answer": "WAITING FOR VA"}'); // TEST
+		endConnection(socket, protocol, 200, '{"answer": "WAITING FOR VA"}');
 	} else {
     // Die IP ist bereits bekannt.
     if(json.getDevice) {
@@ -214,21 +210,19 @@ function handleClientRequest(json, socket, protocol) {
       logger.logInfo("Client fordert Informationen über Voice Assistent an.");
       logger.logInfo("VA: " + session.vaName + "(" + session.vaIP + ").");
       console.log("Client fordert Informationen über Voice Assistent an."); //DEBUG
-      // socket.write('{"answer": "COUPLING DONE."}'); // TEST
-      endConnection(socket, protocol, 200, '{"answer": "DEVICE:' + session.vaName + '"}'); // TEST
+      endConnection(socket, protocol, 200, '{"answer": "DEVICE:' + session.vaName + '"}');
     } else if(json.koppeln == "true") {
       // Client möchte sich mit dem bekannten VA koppeln.
       logger.logInfo("Client möchte Kopplung mit " + session.vaName + "(" + session.vaIP + ").");
       console.log("Client möchte Kopplung mit " + session.vaName + "(" + session.vaIP + ")."); //DEBUG
-  		// socket.write('{"answer": "COUPLING DONE."}'); // TEST
-  		endConnection(socket, protocol, 200, '{"answer": "COUPLING DONE."}'); // TEST
+  		endConnection(socket, protocol, 200, '{"answer": "COUPLING DONE."}');
     } else if (json.koppeln == "false") {
       // Client möchte sich mit dem bekannten VA nicht koppeln.
+      helper.unregisterIP(ipArr, session.clientIP);
       session = new Session(null, null, null, false, null);
       logger.logInfo("Client möchte keine Kopplung. Session wird zurückgesetzt.");
       console.log("Client möchte keine Kopplung. Session wird zurückgesetzt."); //DEBUG
-  		// socket.write('{"answer": "NO COUPLING. SESSION RESET."}'); // TEST
-  		endConnection(socket, protocol, 200, '{"answer": "NO COUPLING. SESSION RESET."}'); // TEST
+  		endConnection(socket, protocol, 200, '{"answer": "NO COUPLING. SESSION RESET."}');
     } else {
       endFlawedConnection(socket, protocol, "Unerwartete Anfrage vom Client.", "unexpected request");
     }
