@@ -14,15 +14,14 @@
 const logger = require('./logger');
 
 
-exports.headers = function(statusCode) {
-  if(statusCode == 200) {
-    return 'HTTP/1.1 200 OK\r\n'
-              +'Content-Type: application/json\r\n'+'Connection: close\r\n\r\n';
-  }
-  if(statusCode == 400) {
-    return 'HTTP/1.1 400 Bad Request\r\n'
-              +'Content-Type: application/json\r\nConnection: close\r\n\r\n';
-  }
+// Zu exportierende Objekte definieren.
+module.exports = {
+  splitRequest: splitRequest,
+  headers: headers,
+  getIP: getIP,
+  registerIP: registerIP,
+  unregisterIP: unregisterIP,
+  getLastRegisteredIP: getLastRegisteredIP
 }
 
 
@@ -44,7 +43,7 @@ function Request(header, protocol, data) {
  * Die Felder beinhalten null wenn kein Header oder keine JSON-Datei gefunden
  * wurde.
  */
-exports.splitRequest = function(data) {
+function splitRequest(data) {
 		var request = new Request(null, null, null);
 
 		if(data == undefined || data == null || data == "") {
@@ -147,6 +146,22 @@ function checkUsedProtocol(header) {
   }
 }
 
+
+/* headers
+ * Gibt den passenden HTTP-Header für einen bestimmten Status Code zurück.
+ */
+function headers(statusCode) {
+  if(statusCode == 200) {
+    return 'HTTP/1.1 200 OK\r\n'
+              +'Content-Type: application/json\r\n'+'Connection: close\r\n\r\n';
+  }
+  if(statusCode == 400) {
+    return 'HTTP/1.1 400 Bad Request\r\n'
+              +'Content-Type: application/json\r\nConnection: close\r\n\r\n';
+  }
+}
+
+
 /* getIP
  * Schneidet die IP aus socket.remoteAddress
  * Rückgabe:
@@ -160,10 +175,6 @@ function getIP(ipString) {
 	if(lastColon != -1)
 		ipString = ipString.toString().substring(lastColon + 1);
 	return ipString;
-}
-
-exports.getIP = function(ipString) {
-  return getIP(ipString);
 }
 
 
@@ -190,7 +201,7 @@ function isKnownIP(ipArr, ip) {
  * Rückgabe:
  * true wenn die IP registriert wurde, ansonsten false.
  */
-exports.registerIP = function(ipArr, ip) {
+function registerIP(ipArr, ip) {
   knownIP = isKnownIP(ipArr, ip);
 
   if(!knownIP) {
@@ -210,7 +221,7 @@ exports.registerIP = function(ipArr, ip) {
  * Rückgabe:
  * Array aus IPs.
  */
-exports.unregisterIP = function(ipArr, ip) {
+function unregisterIP(ipArr, ip) {
 	var tempArr = ipArr;
 	for(var i = 0; i < ipArr.length; i++) {
 		if(ipArr[i] != getIP(ip)) {
@@ -229,6 +240,6 @@ exports.unregisterIP = function(ipArr, ip) {
  * Rückgabe:
  * Die letzte registrierte IP des Arrays.
  */
-exports.getLastRegisteredIP = function(ipArr) {
+function getLastRegisteredIP(ipArr) {
 	return ipArr[ipArr.length-1];
 }
