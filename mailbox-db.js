@@ -39,6 +39,7 @@ function openDB() {
             return console.error("Fehler: " + err.message);
         }
         console.log('Datenbankverbindung hergestellt.');
+        
     });
     return db;
 }
