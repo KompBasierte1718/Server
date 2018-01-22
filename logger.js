@@ -1,6 +1,8 @@
 /* Datei: logger.js
  * Loggt Ereignisse vom Server in einer Textdatei.
  *
+ * Log 'live' verfolgen mit tail -f /pfad/zur/log/datei
+ *
  * Autor: Daniel Nagel
  * Seit:  18.01.2018
  */
