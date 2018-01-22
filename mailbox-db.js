@@ -1,4 +1,4 @@
-/* Dateiname: CRUD.js
+/* Dateiname: maillbox-db.js
  * Beinhaltet grundlegende Datenbankoperationen für die Server Datenbank.
  *
  * Autor: Peter Dick
@@ -36,10 +36,10 @@
 function openDB() {
     let db = new sqlite3.Database('./WebDB.db', (err) => {
         if (err) {
-            return console.error("Fehler: " + err.message);
+            logger.logError('closeDB', "Fehler: " + err.message);
+            return;
         }
-        console.log('Datenbankverbindung hergestellt.');
-        
+        logger.logInfo('Datenbankverbindung hergestellt.');
     });
     return db;
 }
@@ -48,26 +48,26 @@ function openDB() {
 function closeDB(db) {
     db.close((err) => {
         if (err) {
-	    console.log('error');
-            return console.error("Fehler: " + err.message);
+            logger.logError('closeDB', "Fehler: " + err.message);
+            return;
         }
-        console.log('Datenbankverbindung geschloßen.');
+        logger.logInfo('Datenbankverbindung hergestellt.');
     });
 }
 
 
 function initDatabase() {
   let db = openDB();
-  console.log('Erstelle Tabelle Key.');
+  logger.logInfo('Erstelle Tabelle Key.');
   db.run('CREATE TABLE IF NOT EXISTS Key ( id INTEGER NOT NULL,'
          +'codeword TEXT NOT NULL, expiration_date TEXT NOT NULL,'
          +'PRIMARY KEY (id))');
-  console.log('Erstelle Tabelle Device.')
+  logger.logInfo('Erstelle Tabelle Device.');
   db.run('CREATE TABLE IF NOT EXISTS Device ( id INTEGER NOT NULL,'
          +' name TEXT NOT NULL UNIQUE, ip_address TEXT NOT NULL,'
          +' key_id INTEGER NOT NULL, FOREIGN KEY(key_id) REFERENCES Key(id),'
          +' PRIMARY KEY (id) )');
-  console.log('Tabellen erstellt.')
+  logger.logInfo('Tabellen erstellt.');
   closeDB(db);
 }
 
@@ -77,9 +77,10 @@ function insertNewKey(codeword) {
     let sql = 'INSERT INTO Key(codeword, expiration_date) VALUES(?, datetime("now"))';
     db.run(sql, [codeword], function(err) {
         if(err) {
-            return console.error("Fehler: " + err.message);
+            logger.logError('insertNewKey', "Fehler: " + err.message);
+            return;
         }
-        console.log('Schlüssel eingefügt.');
+        logger.logInfo('Schlüssel eingefügt.');
     });
     closeDB(db);
 }
@@ -90,9 +91,10 @@ function insertNewDevice(name, ipAdr, keyid) {
     let sql = 'INSERT INTO Device(name, ip_address, key_id) VALUES(?, ?, ?)';
     db.run(sql, [name, ipAdr, keyid], function(err) {
         if(err) {
-            return console.error("Fehler: " + err.message);
+            logger.logError('insertNewDevice', "Fehler: " + err.message);
+            return;
         }
-        console.log('Gerät eingefügt');
+        logger.logInfo('Gerät eingefügt');
     });
     closeDB(db);
 }
@@ -103,9 +105,10 @@ function deleteDeviceByID(id) {
     let sql = 'DELETE FROM Device WHERE id = ?';
     db.run(sql, [id], function(err) {
         if(err) {
-            return console.error("Fehler: " + err.message);
+            logger.logError('closeDB', "Fehler: " + err.message);
+            return;
         }
-        console.log('Device gelöscht');
+        logger.logInfo('Device gelöscht');
     });
     closeDB(db);
 }
@@ -116,9 +119,10 @@ function deleteDeviceByName(name) {
     let sql = 'DELETE FROM Device WHERE name = ?';
     db.run(sql, [name], function(err) {
         if(err) {
-            return console.error("Fehler: " + err.message);
+            logger.logError('closeDB', "Fehler: " + err.message);
+            return;
         }
-        console.log('Device gelöscht');
+        logger.logInfo('Device gelöscht');
     });
     closeDB(db);
 }
@@ -129,9 +133,10 @@ function deleteKeyByID(id) {
     let sql = 'DELETE FROM Key WHERE id = ?';
     db.run(sql, [id], function(err) {
         if(err) {
-            return console.error("Fehler: " + err.message);
+            logger.logError('closeDB', "Fehler: " + err.message);
+            return;
         }
-        console.log('Schlüssel gelöscht');
+        logger.logInfo('Schlüssel gelöscht');
     });
     closeDB(db);
 }
@@ -142,9 +147,10 @@ function deleteKeyByCodeword(codeword) {
     let sql = 'DELETE FROM Key WHERE codeword = ?';
     db.run(sql, [codeword], function(err) {
         if(err) {
-            return console.error("Fehler: " + err.message);
+            logger.logError('closeDB', "Fehler: " + err.message);
+            return;
         }
-        console.log('Schlüssel gelöscht');
+        logger.logInfo('Schlüssel gelöscht');
     });
     closeDB(db);
 }
@@ -155,7 +161,8 @@ function selectAllDevices(callback) {
     let sql = 'SELECT * FROM Device';
     db.get(sql, function(err, rows) {
         if(err) {
-            return console.error("Fehler: " + err.message);
+            logger.logError('closeDB', "Fehler: " + err.message);
+            return;
         }
         callback(rows);
     });
@@ -168,7 +175,8 @@ function selectDeviceByID(id, callback) {
     let sql = 'SELECT * FROM Device WHERE id = ?';
     db.get(sql, [id], function(err, rows) {
         if(err) {
-            return console.error("Fehler: " + err.message);
+            logger.logError('closeDB', "Fehler: " + err.message);
+            return;
         }
         callback(rows);
     });
@@ -181,7 +189,8 @@ function selectDeviceByName(name, callback) {
     let sql = 'SELECT * FROM Device WHERE name = ?';
     db.get(sql,[name], function(err, rows) {
         if(err) {
-            return console.error("Fehler: " + err.message);
+            logger.logError('closeDB', "Fehler: " + err.message);
+            return;
         }
         callback(rows);
     });
@@ -194,7 +203,8 @@ function selectDeviceByKeyID(keyID, callback) {
     let sql = 'SELECT * FROM Device WHERE key_id = ?';
     db.get(sql,[keyID], function(err, rows) {
         if(err) {
-            return console.error("Fehler: " + err.message);
+            logger.logError('closeDB', "Fehler: " + err.message);
+            return;
         }
         callback(rows);
     });
@@ -207,7 +217,8 @@ function selectAllKeys(callback) {
     let sql = 'SELECT * FROM Key';
     db.get(sql, [id], function(err, rows) {
         if(err) {
-            return console.error("Fehler: " + err.message);
+            logger.logError('closeDB', "Fehler: " + err.message);
+            return;
         }
         callback(rows);
     });
@@ -220,7 +231,8 @@ function selectKeyByID(id, callback) {
     let sql = 'SELECT * FROM Key WHERE id = ?';
     db.get(sql, [id], function(err, rows) {
         if(err) {
-            return console.error("Fehler: " + err.message);
+            logger.logError('closeDB', "Fehler: " + err.message);
+            return;
         }
         callback(rows);
     });
@@ -233,7 +245,8 @@ function selectKeyByCodeword(codeword, callback) {
     let sql = 'SELECT * FROM Key WHERE codeword = ?';
     db.get(sql, [codeword], function(err, rows) {
         if(err) {
-            return console.error("Fehler: " + err.message);
+            logger.logError('closeDB', "Fehler: " + err.message);
+            return;
         }
         callback(rows);
     });
@@ -251,9 +264,10 @@ function updateKeyCodewordByID(id, updateKey, newCodeword) {
     let db = openDB();
     db.run(sql, [newCodeword, id], function(err) {
         if(err) {
-            return console.error("Fehler: " + err.message);
+            logger.logError('closeDB', "Fehler: " + err.message);
+            return;
         }
-        console.log('Zeilen aktualisiert: ' + this.changes);
+        logger.logInfo('Zeilen aktualisiert: ' + this.changes);
     });
     closeDB(db);
 }
@@ -264,9 +278,10 @@ function updateDeviceByID(id, newName, newIP, newKeyid) {
     let db = openDB();
     db.run(sql, [newName, newIP, newKeyid, id], function(err) {
         if(err) {
-            return console.error("Fehler: " + err.message);
+            logger.logError('closeDB', "Fehler: " + err.message);
+            return;
         }
-        console.log('Zeilen aktualisiert: ' + this.changes);
+        logger.logInfo('Zeilen aktualisiert: ' + this.changes);
     });
     closeDB(db);
 }
@@ -277,9 +292,10 @@ function updateDeviceKeyIDByID(id, newKeyid) {
     let db = openDB();
     db.run(sql, [newKeyid, id], function(err) {
         if(err) {
-            return console.error("Fehler: " + err.message);
+            logger.logError('closeDB', "Fehler: " + err.message);
+            return;
         }
-        console.log('Zeilen aktualisiert: ' + this.changes);
+        logger.logInfo('Zeilen aktualisiert: ' + this.changes);
     });
     closeDB(db);
 }

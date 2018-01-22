@@ -71,12 +71,10 @@ function getJSONFromBody(data) {
 	if(firstCurlyBracket == -1 || lastCurlyBracket == -1) {
 		// Keine (valide) gefunden JSON-Datei.
     logger.logInfo("Der Request beinhaltet keine JSON-Datei.");
-		console.log("Der Request beinhaltet keine JSON-Datei."); //DEBUG
 		return null;
 	}
 
   logger.logInfo("Der Request beinhaltet eine JSON-Datei.");
-  console.log("Der Request beinhaltet eine JSON-Datei."); //DEBUG
 	// Alles vor und nach den geschweiften Klammern entfernen.
 	return data.toString().substring(firstCurlyBracket, lastCurlyBracket + 1);
 }
@@ -129,19 +127,14 @@ function checkUsedProtocol(header) {
   if(header == null) {
     // Unbekanntes Protokoll, vermutlich TCP-Request
     logger.logInfo("Das verwendete Protokoll des Request ist Unbekannt (TCP).");
-    console.log("TCP-Request:"); //DEBUG
     return "tcp";
   } else if(header.toString().match(/https/i)) {
     // HTTPs Header
     logger.logInfo("Das verwendete Protokoll des Request ist HTTPS.");
-    console.log("HTTPS-Request:"); //DEBUG
-    console.log("\n"+header+"\n"); //DEBUG
     return "https";
   } else if(header.toString().match(/http/i)) {
     // HTTP Header
     logger.logInfo("Das verwendete Protokoll des Request ist HTTP.");
-    console.log("HTTP-Request:"); //DEBUG
-    console.log("\n"+header+"\n"); //DEBUG
     return "http";
   }
 }
@@ -187,7 +180,6 @@ function isKnownIP(ipArr, ip) {
 	for(var i = 0; i < ipArr.length; i++) {
 		if(ipArr[i] == getIP(ip)) {
       logger.logInfo("IP " + ipArr[i] + " ist bereits bekannt.");
-      console.log("IP " + ipArr[i] + " ist bereits bekannt."); //DEBUG
 			return true;
 		}
 	}
@@ -208,7 +200,6 @@ function registerIP(ipArr, ip) {
     // Bisher unbekannte IP
     ipArr.push(getIP(ip));
     logger.logInfo("IP " + getIP(ip) + " registriert.");
-    console.log("IP " + getIP(ip) + " registriert."); //DEBUG
     return true;
   }
 
@@ -228,7 +219,6 @@ function unregisterIP(ipArr, ip) {
 			tempArr.push(ipArr[i]);
 		} else {
       logger.logInfo("IP " + getIP(ip) + " deregistriert.");
-      console.log("IP " + getIP(ip) + " deregistriert."); //DEBUG
     }
 	}
 	ipArr = tempArr;
