@@ -1,35 +1,60 @@
 var x = require('./CRUD');
 
-x.initDatabase();
+//x.initDatabase();
 /*
-x.insertSchluessel('hallo');
-x.insertSchluessel('welt');
-x.insertSchluessel('test');
-x.insertGeraet('Client', 'test', 1);
-x.insertGeraet('VA', 'testVA', 1);
-x.insertGeraet('test', 'test', 1);
-x.insertGeraet('test2', 'test', 2);
-x.deleteGeraetID(3);
-x.deleteGeraetName('test2');
-x.deleteSchluesselID(3);
-x.selectGeraetID(1, function(rows) {
-console.log(rows.ID);
-console.log(rows.Name);
-console.log(rows.IPAdresse);
-console.log(rows.SchluesselID);
+x.insertNewKey('hallo');
+x.insertNewKey('welt');
+x.insertNewKey('test');
+x.insertNewDevice('Client', 'test', 1);
+x.insertNewDevice('VA', 'testVA', 1);
+x.insertNewDevice('test', 'test', 1);
+x.insertNewDevice('test2', 'test', 2);
+
+x.deleteDeviceByID(2);
+x.deleteDeviceByName('test2');
+x.deleteKeyByID(3);
+x.deleteKeyByCodeword('test');
+
+x.selectAllDevices(function(rows) {
+console.log(rows.length);
+for(var i = 0; i < rows.length; i++) {
+console.log(rows[i]);
+}
 });
-x.selectGeraetName('VA', function(rows) {
-console.log(rows.ID);
-console.log(rows.Name);
-console.log(rows.IPAdresse);
-console.log(rows.SchluesselID);
+x.selectDeviceByID(1, function(rows) {
+console.log(rows.id);
+console.log(rows.name);
+console.log(rows.ip_address);
+console.log(rows.key_id);
 });
-x.selectSchluesselID(1, function(rows) {
-console.log(rows.ID);
-console.log(rows.Codewort);
-console.log(rows.Ablaufdatum);
+x.selectDeviceByName('VA', function(rows) {
+console.log(rows.id);
+console.log(rows.name);
+console.log(rows.ip_address);
+console.log(rows.key_id);
 });
-x.updateSchluessel(1, true, 'test1');
-x.updateSchluessel(2, false, 'test2');
-x.updateGeraet(1, 'Client', 'update', 1);
+x.selectDeviceByKeyID(1, function(rows) {
+for(var i = 0; i < rows.length; i++) {
+console.log(rows[i]);
+}
+});
+x.selectAllKeys(function(rows) {
+console.log(rows.length);
+for(var i = 0; i < rows.length; i++) {
+console.log(rows[i]);
+}
+});
+x.selectKeyByID(1, function(rows) {
+console.log(rows.id);
+console.log(rows.codeword);
+console.log(rows.expiration_date);
+});
+x.selectKeyByCodeword('hallo', function(rows) {
+console.log(rows);
+});
+
+x.updateKeyCodewordByID(1, true, 'test1');
+x.updateKeyCodewordByID(2, false, 'test2');
+x.updateDeviceByID(2, 'Client', 'update', 1);
+x.updateDeviceKeyIDByID(1, 2);
 */

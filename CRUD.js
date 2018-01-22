@@ -58,7 +58,7 @@ function initDatabase() {
   let db = openDB();
   console.log('Erstelle Tabelle Key.');
   db.run('CREATE TABLE IF NOT EXISTS Key ( id INTEGER NOT NULL,'
-         +'codeword TEXT NOT NULL, expiration_date TEXT NOT NULL,'
+         +'codeword TEXT NOT NULL UNIQUE, expiration_date TEXT NOT NULL,'
          +'PRIMARY KEY (id))');
   console.log('Erstelle Tabelle Device.');
   db.run('CREATE TABLE IF NOT EXISTS Device ( id INTEGER NOT NULL,'
@@ -151,7 +151,7 @@ function deleteKeyByCodeword(codeword) {
 function selectAllDevices(callback) {
     let db = openDB();
     let sql = 'SELECT * FROM Device';
-    db.get(sql, function(err, rows) {
+    db.all(sql, function(err, rows) {
         if(err) {
             return console.error("Fehler: " + err.message);
         }
@@ -190,7 +190,7 @@ function selectDeviceByName(name, callback) {
 function selectDeviceByKeyID(keyID, callback) {
     let db = openDB();
     let sql = 'SELECT * FROM Device WHERE key_id = ?';
-    db.get(sql,[keyID], function(err, rows) {
+    db.all(sql,[keyID], function(err, rows) {
         if(err) {
             return console.error("Fehler: " + err.message);
         }
@@ -203,7 +203,7 @@ function selectDeviceByKeyID(keyID, callback) {
 function selectAllKeys(callback) {
     let db = openDB();
     let sql = 'SELECT * FROM Key';
-    db.get(sql, [id], function(err, rows) {
+    db.all(sql, function(err, rows) {
         if(err) {
             return console.error("Fehler: " + err.message);
         }
