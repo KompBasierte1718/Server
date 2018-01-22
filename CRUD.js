@@ -70,6 +70,7 @@ function initDatabase() {
   closeDB(db);
 }
 
+
 function insertNewKey(codeword) {
     let db = openDB();
     let sql = 'INSERT INTO Key(codeword, expiration_date) VALUES(?, datetime("now"))';
@@ -81,6 +82,7 @@ function insertNewKey(codeword) {
     });
     closeDB(db);
 }
+
 
 function insertNewDevice(name, ipAdr, keyid) {
     let db = openDB();
