@@ -1,36 +1,37 @@
-/* Dateiname: maillbox-db.js
+﻿
+﻿/* Dateiname: maillbox-db.js
  * Beinhaltet grundlegende Datenbankoperationen für die Server Datenbank.
  *
  * Autor: Peter Dick
  * Seit: 19.01.2017
- */
+*/
 
 
-  // Referenzen einbinden.
- const logger = require('./logger');
- const sqlite3 = require('sqlite3');
+// Referenzen einbinden.
+const logger = require('./logger');
+const sqlite3 = require('sqlite3');
 
+// Zu exportierende Objekte definieren.
+module.exports = {
+    initDatabase: initDatabase,
+    insertNewKey: insertNewKey,
+    insertNewDevice: insertNewDevice,
+    deleteDeviceByID: deleteDeviceByID,
+    deleteDeviceByName: deleteDeviceByName,
+    deleteKeyByID: deleteKeyByID,
+    deleteKeyByCodeword: deleteKeyByCodeword,
+    selectAllDevices: selectAllDevices,
+    selectDeviceByID: selectDeviceByID,
+    selectDeviceByName: selectDeviceByName,
+    selectDeviceByKeyID: selectDeviceByKeyID,
+    selectAllKeys: selectAllKeys,
+    selectKeyByID: selectKeyByID,
+    selectKeyByCodeword: selectKeyByCodeword,
+    updateKeyCodewordByID: updateKeyCodewordByID,
+    updateDeviceByID: updateDeviceByID,
+    updateDeviceKeyIDByID: updateDeviceKeyIDByID
+}
 
- // Zu exportierende Objekte definieren.
- module.exports = {
-   initDatabase: initDatabase,
-   insertNewKey: insertNewKey,
-   insertNewDevice: insertNewDevice,
-   deleteDeviceByID: deleteDeviceByID,
-   deleteDeviceByName: deleteDeviceByName,
-   deleteKeyByID: deleteKeyByID,
-   deleteKeyByCodeword: deleteKeyByCodeword,
-   selectAllDevices: selectAllDevices,
-   selectDeviceByID: selectDeviceByID,
-   selectDeviceByName: selectDeviceByName,
-   selectDeviceByKeyID: selectDeviceByKeyID,
-   selectAllKeys: selectAllKeys,
-   selectKeyByID: selectKeyByID,
-   selectKeyByCodeword: selectKeyByCodeword,
-   updateKeyCodewordByID: updateKeyCodewordByID,
-   updateDeviceByID: updateDeviceByID,
-   updateDeviceKeyIDByID: updateDeviceKeyIDByID
- }
 
 
 function openDB() {
@@ -57,18 +58,18 @@ function closeDB(db) {
 
 
 function initDatabase() {
-  var db = openDB();
-  logger.logInfo('Erstelle Tabelle Key.');
-  db.run('CREATE TABLE IF NOT EXISTS Key ( id INTEGER NOT NULL,'
-         +'codeword TEXT NOT NULL, expiration_date TEXT NOT NULL,'
-         +'PRIMARY KEY (id))');
-  logger.logInfo('Erstelle Tabelle Device.');
-  db.run('CREATE TABLE IF NOT EXISTS Device ( id INTEGER NOT NULL,'
-         +' name TEXT NOT NULL, ip_address TEXT NOT NULL,'
-         +' key_id INTEGER NOT NULL, FOREIGN KEY(key_id) REFERENCES "Key"(id),'
-         +' PRIMARY KEY (id) )');
-  logger.logInfo('Tabellen erstellt.');
-  closeDB(db);
+    var db = openDB();
+    logger.logInfo('Erstelle Tabelle Key.');
+    db.run('CREATE TABLE IF NOT EXISTS Key ( id INTEGER NOT NULL,'
+           +'codeword TEXT NOT NULL UNIQUE, expiration_date TEXT NOT NULL,'
+           +'PRIMARY KEY (id))');
+    logger.logInfo('Erstelle Tabelle Device.');
+    db.run('CREATE TABLE IF NOT EXISTS Device ( id INTEGER NOT NULL,'
+           +' name TEXT NOT NULL UNIQUE, ip_address TEXT NOT NULL,'
+           +' key_id INTEGER NOT NULL, FOREIGN KEY(key_id) REFERENCES "Key"(id),'
+           +' PRIMARY KEY (id) )');
+    logger.logInfo('Tabellen erstellt.');
+    closeDB(db);
 }
 
 
@@ -157,8 +158,10 @@ function deleteKeyByCodeword(codeword) {
 
 
 function selectAllDevices(callback) {
+
     var db = openDB();
     var sql = 'SELECT * FROM Device';
+
     db.all(sql, function(err, rows) {
         if(err) {
             logger.logError('closeDB', "Fehler: " + err.message);
@@ -199,8 +202,10 @@ function selectDeviceByName(name, callback) {
 
 
 function selectDeviceByKeyID(keyID, callback) {
+
     var db = openDB();
     var sql = 'SELECT * FROM Device WHERE key_id = ?';
+
     db.all(sql,[keyID], function(err, rows) {
         if(err) {
             logger.logError('closeDB', "Fehler: " + err.message);
@@ -215,7 +220,7 @@ function selectDeviceByKeyID(keyID, callback) {
 function selectAllKeys(callback) {
     var db = openDB();
     var sql = 'SELECT * FROM Key';
-    db.all(sql, [id], function(err, rows) {
+    db.all(sql, function(err, rows) {
         if(err) {
             logger.logError('closeDB', "Fehler: " + err.message);
             return;
@@ -293,6 +298,7 @@ function updateDeviceKeyIDByID(id, newKeyid) {
     db.run(sql, [newKeyid, id], function(err) {
         if(err) {
             logger.logError('closeDB', "Fehler: " + err.message);
+
             return;
         }
         logger.logInfo('Zeilen aktualisiert: ' + this.changes);
