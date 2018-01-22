@@ -16,10 +16,10 @@
    initDatabase: initDatabase,
    insertNewKey: insertNewKey,
    insertNewDevice: insertNewDevice,
-   devareDeviceByID: devareDeviceByID,
-   devareDeviceByName: devareDeviceByName,
-   devareKeyByID: devareKeyByID,
-   devareKeyByCodeword: devareKeyByCodeword,
+   deleteDeviceByID: deleteDeviceByID,
+   deleteDeviceByName: deleteDeviceByName,
+   deleteKeyByID: deleteKeyByID,
+   deleteKeyByCodeword: deleteKeyByCodeword,
    selectAllDevices: selectAllDevices,
    selectDeviceByID: selectDeviceByID,
    selectDeviceByName: selectDeviceByName,
@@ -64,8 +64,8 @@ function initDatabase() {
          +'PRIMARY KEY (id))');
   logger.logInfo('Erstelle Tabelle Device.');
   db.run('CREATE TABLE IF NOT EXISTS Device ( id INTEGER NOT NULL,'
-         +' name TEXT NOT NULL UNIQUE, ip_address TEXT NOT NULL,'
-         +' key_id INTEGER NOT NULL, FOREIGN KEY(key_id) REFERENCES Key(id),'
+         +' name TEXT NOT NULL, ip_address TEXT NOT NULL,'
+         +' key_id INTEGER NOT NULL, FOREIGN KEY(key_id) REFERENCES "Key"(id),'
          +' PRIMARY KEY (id) )');
   logger.logInfo('Tabellen erstellt.');
   closeDB(db);
@@ -100,7 +100,7 @@ function insertNewDevice(name, ipAdr, keyid) {
 }
 
 
-function devareDeviceByID(id) {
+function deleteDeviceByID(id) {
     var db = openDB();
     var sql = 'DELETE FROM Device WHERE id = ?';
     db.run(sql, [id], function(err) {
@@ -114,7 +114,7 @@ function devareDeviceByID(id) {
 }
 
 
-function devareDeviceByName(name) {
+function deleteDeviceByName(name) {
     var db = openDB();
     var sql = 'DELETE FROM Device WHERE name = ?';
     db.run(sql, [name], function(err) {
@@ -128,7 +128,7 @@ function devareDeviceByName(name) {
 }
 
 
-function devareKeyByID(id) {
+function deleteKeyByID(id) {
     var db = openDB();
     var sql = 'DELETE FROM Key WHERE id = ?';
     db.run(sql, [id], function(err) {
@@ -142,7 +142,7 @@ function devareKeyByID(id) {
 }
 
 
-function devareKeyByCodeword(codeword) {
+function deleteKeyByCodeword(codeword) {
     var db = openDB();
     var sql = 'DELETE FROM Key WHERE codeword = ?';
     db.run(sql, [codeword], function(err) {

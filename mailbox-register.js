@@ -189,9 +189,11 @@ function handleClientRequest(json, socket, protocol) {
 		logger.logInfo("Client möchte sich mit VA verbinden. Codewörter: " + session.codewords);
     // Neuen Client und Schlüssel in Datenbank sichern.
     db.insertNewKey(session.codewords);
+    var codewordID = null;
     db.selectKeyByCodeword(session.codewords, function(rows) {
-      db.insertNewDevice(json.device, session.clientIP, rows.id);
-    })
+      codewordID = rows.ID;
+    });
+    db.insertNewDevice(json.device, session.clientIP, codewordID);
 		endConnection(socket, protocol, 200, '{"answer": "WAITING FOR VA"}');
 	} else {
     // Die IP ist bereits bekannt.
