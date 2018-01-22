@@ -14,11 +14,22 @@
  // Zu exportierende Objekte definieren.
  module.exports = {
    initDatabase: initDatabase,
-   insertKey: insertKey,
-   getIP: getIP,
-   registerIP: registerIP,
-   unregisterIP: unregisterIP,
-   getLastRegisteredIP: getLastRegisteredIP
+   insertNewKey: insertNewKey,
+   insertNewDevice: insertNewDevice,
+   deleteDeviceByID: deleteDeviceByID,
+   deleteDeviceByName: deleteDeviceByName,
+   deleteKeyByID: deleteKeyByID,
+   deleteKeyByCodeword: deleteKeyByCodeword,
+   selectAllDevices: selectAllDevices,
+   selectDeviceByID: selectDeviceByID,
+   selectDeviceByName: selectDeviceByName,
+   selectDeviceByKeyID: selectDeviceByKeyID,
+   selectAllKeys: selectAllKeys,
+   selectKeyByID: selectKeyByID,
+   selectKeyByCodeword: selectKeyByCodeword,
+   updateKeyCodewordByID: updateKeyCodewordByID,
+   updateDeviceByID: updateDeviceByID,
+   updateDeviceKeyIDByID: updateDeviceKeyIDByID
  }
 
 
@@ -227,7 +238,7 @@ function selectKeyByCodeword(codeword, callback) {
 }
 
 
-function updateKeyCodeword(id, updateKey, newCodeword) {
+function updateKeyCodewordByID(id, updateKey, newCodeword) {
     let sql;
     if(updateKey) {
         sql = 'UPDATE Key SET codeword = ?, expiration_date = datetime("now") WHERE id = ?';
@@ -245,7 +256,7 @@ function updateKeyCodeword(id, updateKey, newCodeword) {
 }
 
 
-function updateDeviceKeyID(id, newName, newIP, newKeyid) {
+function updateDeviceByID(id, newName, newIP, newKeyid) {
     let sql = 'UPDATE Device SET name = ?, ip_address = ?, key_id = ? WHERE id = ?';
     let db = openDB();
     db.run(sql, [newName, newIP, newKeyid, id], function(err) {
@@ -258,7 +269,7 @@ function updateDeviceKeyID(id, newName, newIP, newKeyid) {
 }
 
 
-function updateDeviceKeyID(id, newKeyid) {
+function updateDeviceKeyIDByID(id, newKeyid) {
     let sql = 'UPDATE Device SET key_id = ? WHERE id = ?';
     let db = openDB();
     db.run(sql, [newKeyid, id], function(err) {
