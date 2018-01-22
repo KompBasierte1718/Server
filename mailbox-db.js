@@ -16,10 +16,10 @@
    initDatabase: initDatabase,
    insertNewKey: insertNewKey,
    insertNewDevice: insertNewDevice,
-   deleteDeviceByID: deleteDeviceByID,
-   deleteDeviceByName: deleteDeviceByName,
-   deleteKeyByID: deleteKeyByID,
-   deleteKeyByCodeword: deleteKeyByCodeword,
+   devareDeviceByID: devareDeviceByID,
+   devareDeviceByName: devareDeviceByName,
+   devareKeyByID: devareKeyByID,
+   devareKeyByCodeword: devareKeyByCodeword,
    selectAllDevices: selectAllDevices,
    selectDeviceByID: selectDeviceByID,
    selectDeviceByName: selectDeviceByName,
@@ -34,7 +34,7 @@
 
 
 function openDB() {
-    let db = new sqlite3.Database('./WebDB.db', (err) => {
+    var db = new sqlite3.Database('./WebDB.db', (err) => {
         if (err) {
             logger.logError('closeDB', "Fehler: " + err.message);
             return;
@@ -57,7 +57,7 @@ function closeDB(db) {
 
 
 function initDatabase() {
-  let db = openDB();
+  var db = openDB();
   logger.logInfo('Erstelle Tabelle Key.');
   db.run('CREATE TABLE IF NOT EXISTS Key ( id INTEGER NOT NULL,'
          +'codeword TEXT NOT NULL, expiration_date TEXT NOT NULL,'
@@ -73,8 +73,8 @@ function initDatabase() {
 
 
 function insertNewKey(codeword) {
-    let db = openDB();
-    let sql = 'INSERT INTO Key(codeword, expiration_date) VALUES(?, datetime("now"))';
+    var db = openDB();
+    var sql = 'INSERT INTO Key(codeword, expiration_date) VALUES(?, datetime("now"))';
     db.run(sql, [codeword], function(err) {
         if(err) {
             logger.logError('insertNewKey', "Fehler: " + err.message);
@@ -87,8 +87,8 @@ function insertNewKey(codeword) {
 
 
 function insertNewDevice(name, ipAdr, keyid) {
-    let db = openDB();
-    let sql = 'INSERT INTO Device(name, ip_address, key_id) VALUES(?, ?, ?)';
+    var db = openDB();
+    var sql = 'INSERT INTO Device(name, ip_address, key_id) VALUES(?, ?, ?)';
     db.run(sql, [name, ipAdr, keyid], function(err) {
         if(err) {
             logger.logError('insertNewDevice', "Fehler: " + err.message);
@@ -100,9 +100,9 @@ function insertNewDevice(name, ipAdr, keyid) {
 }
 
 
-function deleteDeviceByID(id) {
-    let db = openDB();
-    let sql = 'DELETE FROM Device WHERE id = ?';
+function devareDeviceByID(id) {
+    var db = openDB();
+    var sql = 'DELETE FROM Device WHERE id = ?';
     db.run(sql, [id], function(err) {
         if(err) {
             logger.logError('closeDB', "Fehler: " + err.message);
@@ -114,9 +114,9 @@ function deleteDeviceByID(id) {
 }
 
 
-function deleteDeviceByName(name) {
-    let db = openDB();
-    let sql = 'DELETE FROM Device WHERE name = ?';
+function devareDeviceByName(name) {
+    var db = openDB();
+    var sql = 'DELETE FROM Device WHERE name = ?';
     db.run(sql, [name], function(err) {
         if(err) {
             logger.logError('closeDB', "Fehler: " + err.message);
@@ -128,9 +128,9 @@ function deleteDeviceByName(name) {
 }
 
 
-function deleteKeyByID(id) {
-    let db = openDB();
-    let sql = 'DELETE FROM Key WHERE id = ?';
+function devareKeyByID(id) {
+    var db = openDB();
+    var sql = 'DELETE FROM Key WHERE id = ?';
     db.run(sql, [id], function(err) {
         if(err) {
             logger.logError('closeDB', "Fehler: " + err.message);
@@ -142,9 +142,9 @@ function deleteKeyByID(id) {
 }
 
 
-function deleteKeyByCodeword(codeword) {
-    let db = openDB();
-    let sql = 'DELETE FROM Key WHERE codeword = ?';
+function devareKeyByCodeword(codeword) {
+    var db = openDB();
+    var sql = 'DELETE FROM Key WHERE codeword = ?';
     db.run(sql, [codeword], function(err) {
         if(err) {
             logger.logError('closeDB', "Fehler: " + err.message);
@@ -157,8 +157,8 @@ function deleteKeyByCodeword(codeword) {
 
 
 function selectAllDevices(callback) {
-    let db = openDB();
-    let sql = 'SELECT * FROM Device';
+    var db = openDB();
+    var sql = 'SELECT * FROM Device';
     db.get(sql, function(err, rows) {
         if(err) {
             logger.logError('closeDB', "Fehler: " + err.message);
@@ -171,8 +171,8 @@ function selectAllDevices(callback) {
 
 
 function selectDeviceByID(id, callback) {
-    let db = openDB();
-    let sql = 'SELECT * FROM Device WHERE id = ?';
+    var db = openDB();
+    var sql = 'SELECT * FROM Device WHERE id = ?';
     db.get(sql, [id], function(err, rows) {
         if(err) {
             logger.logError('closeDB', "Fehler: " + err.message);
@@ -185,8 +185,8 @@ function selectDeviceByID(id, callback) {
 
 
 function selectDeviceByName(name, callback) {
-    let db = openDB();
-    let sql = 'SELECT * FROM Device WHERE name = ?';
+    var db = openDB();
+    var sql = 'SELECT * FROM Device WHERE name = ?';
     db.get(sql,[name], function(err, rows) {
         if(err) {
             logger.logError('closeDB', "Fehler: " + err.message);
@@ -199,8 +199,8 @@ function selectDeviceByName(name, callback) {
 
 
 function selectDeviceByKeyID(keyID, callback) {
-    let db = openDB();
-    let sql = 'SELECT * FROM Device WHERE key_id = ?';
+    var db = openDB();
+    var sql = 'SELECT * FROM Device WHERE key_id = ?';
     db.get(sql,[keyID], function(err, rows) {
         if(err) {
             logger.logError('closeDB', "Fehler: " + err.message);
@@ -213,8 +213,8 @@ function selectDeviceByKeyID(keyID, callback) {
 
 
 function selectAllKeys(callback) {
-    let db = openDB();
-    let sql = 'SELECT * FROM Key';
+    var db = openDB();
+    var sql = 'SELECT * FROM Key';
     db.get(sql, [id], function(err, rows) {
         if(err) {
             logger.logError('closeDB', "Fehler: " + err.message);
@@ -227,8 +227,8 @@ function selectAllKeys(callback) {
 
 
 function selectKeyByID(id, callback) {
-    let db = openDB();
-    let sql = 'SELECT * FROM Key WHERE id = ?';
+    var db = openDB();
+    var sql = 'SELECT * FROM Key WHERE id = ?';
     db.get(sql, [id], function(err, rows) {
         if(err) {
             logger.logError('closeDB', "Fehler: " + err.message);
@@ -241,8 +241,8 @@ function selectKeyByID(id, callback) {
 
 
 function selectKeyByCodeword(codeword, callback) {
-    let db = openDB();
-    let sql = 'SELECT * FROM Key WHERE codeword = ?';
+    var db = openDB();
+    var sql = 'SELECT * FROM Key WHERE codeword = ?';
     db.get(sql, [codeword], function(err, rows) {
         if(err) {
             logger.logError('closeDB', "Fehler: " + err.message);
@@ -255,13 +255,13 @@ function selectKeyByCodeword(codeword, callback) {
 
 
 function updateKeyCodewordByID(id, updateKey, newCodeword) {
-    let sql;
+    var sql;
     if(updateKey) {
         sql = 'UPDATE Key SET codeword = ?, expiration_date = datetime("now") WHERE id = ?';
     } else {
         sql = 'UPDATE Key SET codeword = ? WHERE id = ?';
     }
-    let db = openDB();
+    var db = openDB();
     db.run(sql, [newCodeword, id], function(err) {
         if(err) {
             logger.logError('closeDB', "Fehler: " + err.message);
@@ -274,8 +274,8 @@ function updateKeyCodewordByID(id, updateKey, newCodeword) {
 
 
 function updateDeviceByID(id, newName, newIP, newKeyid) {
-    let sql = 'UPDATE Device SET name = ?, ip_address = ?, key_id = ? WHERE id = ?';
-    let db = openDB();
+    var sql = 'UPDATE Device SET name = ?, ip_address = ?, key_id = ? WHERE id = ?';
+    var db = openDB();
     db.run(sql, [newName, newIP, newKeyid, id], function(err) {
         if(err) {
             logger.logError('closeDB', "Fehler: " + err.message);
@@ -288,8 +288,8 @@ function updateDeviceByID(id, newName, newIP, newKeyid) {
 
 
 function updateDeviceKeyIDByID(id, newKeyid) {
-    let sql = 'UPDATE Device SET key_id = ? WHERE id = ?';
-    let db = openDB();
+    var sql = 'UPDATE Device SET key_id = ? WHERE id = ?';
+    var db = openDB();
     db.run(sql, [newKeyid, id], function(err) {
         if(err) {
             logger.logError('closeDB', "Fehler: " + err.message);
