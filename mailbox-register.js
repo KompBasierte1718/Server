@@ -39,6 +39,7 @@ var session = new Session(null, null, null, false, null);
 const port = 51337; // Registriere Port
 const server = net.createServer(); // Neue Server Instanz.
 
+db.initDatabase(); // Datenbank initialisieren
 server.listen(port); // Server Port öffnen.
 server.on('connection', clientConnectedEvent); // Event bei 'connection'
 server.on('error', errorEvent); // Event bei 'error'
@@ -186,6 +187,11 @@ function handleClientRequest(json, socket, protocol) {
 		session.codewords = json.password;
 		session.isReadyToPair = true;
 		logger.logInfo("Client möchte sich mit VA verbinden. Codewörter: " + session.codewords);
+    // Neuen Client und Schlüssel in Datenbank sichern.
+    db.insertNewKey(session.codewords);
+    db.selectKeyByCodeword(session.codewords, function(rows) {
+      db.insertNewDevice(json.device, session.clientIP, rows.id);
+    })
 		endConnection(socket, protocol, 200, '{"answer": "WAITING FOR VA"}');
 	} else {
     // Die IP ist bereits bekannt.
