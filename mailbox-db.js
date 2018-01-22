@@ -37,7 +37,7 @@ module.exports = {
 function openDB() {
     var db = new sqlite3.Database('./WebDB.db', (err) => {
         if (err) {
-            logger.logError('closeDB', "Fehler: " + err.message);
+            logger.logError('openDB', "Fehler: " + err.message);
             return;
         }
         logger.logInfo('Datenbankverbindung hergestellt.');
@@ -106,7 +106,7 @@ function deleteDeviceByID(id) {
     var sql = 'DELETE FROM Device WHERE id = ?';
     db.run(sql, [id], function(err) {
         if(err) {
-            logger.logError('closeDB', "Fehler: " + err.message);
+            logger.logError('deleteDeviceByID', "Fehler: " + err.message);
             return;
         }
         logger.logInfo('Device gelöscht');
@@ -120,7 +120,7 @@ function deleteDeviceByName(name) {
     var sql = 'DELETE FROM Device WHERE name = ?';
     db.run(sql, [name], function(err) {
         if(err) {
-            logger.logError('closeDB', "Fehler: " + err.message);
+            logger.logError('deleteDeviceByName', "Fehler: " + err.message);
             return;
         }
         logger.logInfo('Device gelöscht');
@@ -134,7 +134,7 @@ function deleteKeyByID(id) {
     var sql = 'DELETE FROM Key WHERE id = ?';
     db.run(sql, [id], function(err) {
         if(err) {
-            logger.logError('closeDB', "Fehler: " + err.message);
+            logger.logError('deleteKeyByID', "Fehler: " + err.message);
             return;
         }
         logger.logInfo('Schlüssel gelöscht');
@@ -148,7 +148,7 @@ function deleteKeyByCodeword(codeword) {
     var sql = 'DELETE FROM Key WHERE codeword = ?';
     db.run(sql, [codeword], function(err) {
         if(err) {
-            logger.logError('closeDB', "Fehler: " + err.message);
+            logger.logError('deleteKeyByCodeword', "Fehler: " + err.message);
             return;
         }
         logger.logInfo('Schlüssel gelöscht');
@@ -164,7 +164,7 @@ function selectAllDevices(callback) {
 
     db.all(sql, function(err, rows) {
         if(err) {
-            logger.logError('closeDB', "Fehler: " + err.message);
+            logger.logError('selectAllDevices', "Fehler: " + err.message);
             return;
         }
         callback(rows);
@@ -178,7 +178,7 @@ function selectDeviceByID(id, callback) {
     var sql = 'SELECT * FROM Device WHERE id = ?';
     db.get(sql, [id], function(err, rows) {
         if(err) {
-            logger.logError('closeDB', "Fehler: " + err.message);
+            logger.logError('selectDeviceByID', "Fehler: " + err.message);
             return;
         }
         callback(rows);
@@ -192,7 +192,7 @@ function selectDeviceByName(name, callback) {
     var sql = 'SELECT * FROM Device WHERE name = ?';
     db.get(sql,[name], function(err, rows) {
         if(err) {
-            logger.logError('closeDB', "Fehler: " + err.message);
+            logger.logError('selectDeviceByName', "Fehler: " + err.message);
             return;
         }
         callback(rows);
@@ -208,7 +208,7 @@ function selectDeviceByKeyID(keyID, callback) {
 
     db.all(sql,[keyID], function(err, rows) {
         if(err) {
-            logger.logError('closeDB', "Fehler: " + err.message);
+            logger.logError('selectDeviceByKeyID', "Fehler: " + err.message);
             return;
         }
         callback(rows);
@@ -222,7 +222,7 @@ function selectAllKeys(callback) {
     var sql = 'SELECT * FROM Key';
     db.all(sql, function(err, rows) {
         if(err) {
-            logger.logError('closeDB', "Fehler: " + err.message);
+            logger.logError('selectAllKeys', "Fehler: " + err.message);
             return;
         }
         callback(rows);
@@ -236,7 +236,7 @@ function selectKeyByID(id, callback) {
     var sql = 'SELECT * FROM Key WHERE id = ?';
     db.get(sql, [id], function(err, rows) {
         if(err) {
-            logger.logError('closeDB', "Fehler: " + err.message);
+            logger.logError('selectKeyByID', "Fehler: " + err.message);
             return;
         }
         callback(rows);
@@ -250,7 +250,7 @@ function selectKeyByCodeword(codeword, callback) {
     var sql = 'SELECT * FROM Key WHERE codeword = ?';
     db.get(sql, [codeword], function(err, rows) {
         if(err) {
-            logger.logError('closeDB', "Fehler: " + err.message);
+            logger.logError('selectKeyByCodeword', "Fehler: " + err.message);
             return;
         }
         callback(rows);
@@ -269,7 +269,7 @@ function updateKeyCodewordByID(id, updateKey, newCodeword) {
     var db = openDB();
     db.run(sql, [newCodeword, id], function(err) {
         if(err) {
-            logger.logError('closeDB', "Fehler: " + err.message);
+            logger.logError('updateKeyCodewordByID', "Fehler: " + err.message);
             return;
         }
         logger.logInfo('Zeilen aktualisiert: ' + this.changes);
@@ -283,7 +283,7 @@ function updateDeviceByID(id, newName, newIP, newKeyid) {
     var db = openDB();
     db.run(sql, [newName, newIP, newKeyid, id], function(err) {
         if(err) {
-            logger.logError('closeDB', "Fehler: " + err.message);
+            logger.logError('updateDeviceByID', "Fehler: " + err.message);
             return;
         }
         logger.logInfo('Zeilen aktualisiert: ' + this.changes);
@@ -297,7 +297,7 @@ function updateDeviceKeyIDByID(id, newKeyid) {
     var db = openDB();
     db.run(sql, [newKeyid, id], function(err) {
         if(err) {
-            logger.logError('closeDB', "Fehler: " + err.message);
+            logger.logError('updateDeviceKeyIDByID', "Fehler: " + err.message);
 
             return;
         }
