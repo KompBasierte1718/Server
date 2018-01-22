@@ -1,36 +1,70 @@
-/* Dateiname: CRUD.js
+﻿/* Dateiname: CRUD.js
+
  * Beinhaltet grundlegende Datenbankoperationen für die Server Datenbank.
+
  *
+
  * Autor: Peter Dick
+
  * Seit: 19.01.2017
- */
+ 
+*/
 
 
-  // Referenzen einbinden.
- const logger = require('./logger');
- const sqlite3 = require('sqlite3');
 
 
- // Zu exportierende Objekte definieren.
- module.exports = {
+
+// Referenzen einbinden.
+
+const logger = require('./logger');
+
+const sqlite3 = require('sqlite3');
+
+
+
+
+// Zu exportierende Objekte definieren.
+
+module.exports = {
+
    initDatabase: initDatabase,
+
    insertNewKey: insertNewKey,
+
    insertNewDevice: insertNewDevice,
+
    deleteDeviceByID: deleteDeviceByID,
+
    deleteDeviceByName: deleteDeviceByName,
+
    deleteKeyByID: deleteKeyByID,
+
    deleteKeyByCodeword: deleteKeyByCodeword,
+
    selectAllDevices: selectAllDevices,
+
    selectDeviceByID: selectDeviceByID,
+
    selectDeviceByName: selectDeviceByName,
+
    selectDeviceByKeyID: selectDeviceByKeyID,
+
    selectAllKeys: selectAllKeys,
+
    selectKeyByID: selectKeyByID,
+
    selectKeyByCodeword: selectKeyByCodeword,
+
    updateKeyCodewordByID: updateKeyCodewordByID,
+
    updateDeviceByID: updateDeviceByID,
+
    updateDeviceKeyIDByID: updateDeviceKeyIDByID
- }
+
+}
+
+
+
 
 
 function openDB() {
@@ -61,12 +95,12 @@ function initDatabase() {
   db.run('CREATE TABLE IF NOT EXISTS Key ( id INTEGER NOT NULL,'
          +'codeword TEXT NOT NULL, expiration_date TEXT NOT NULL,'
          +'PRIMARY KEY (id))');
-  console.log('Erstelle Tabelle Device.')
+  console.log('Erstelle Tabelle Device.');
   db.run('CREATE TABLE IF NOT EXISTS Device ( id INTEGER NOT NULL,'
          +' name TEXT NOT NULL UNIQUE, ip_address TEXT NOT NULL,'
-         +' key_id INTEGER NOT NULL, FOREIGN KEY(key_id) REFERENCES Key(id),'
+         +' key_id INTEGER NOT NULL, FOREIGN KEY (key_id) REFERENCES "Key"(id),'
          +' PRIMARY KEY (id) )');
-  console.log('Tabellen erstellt.')
+  console.log('Tabellen erstellt.');
   closeDB(db);
 }
 
@@ -271,14 +305,27 @@ function updateDeviceByID(id, newName, newIP, newKeyid) {
 }
 
 
+
+
+
 function updateDeviceKeyIDByID(id, newKeyid) {
+
     let sql = 'UPDATE Device SET key_id = ? WHERE id = ?';
+
     let db = openDB();
+
     db.run(sql, [newKeyid, id], function(err) {
+
         if(err) {
+
             return console.error("Fehler: " + err.message);
+
         }
+
         console.log('Zeilen aktualisiert: ' + this.changes);
+
     });
+
     closeDB(db);
+
 }
