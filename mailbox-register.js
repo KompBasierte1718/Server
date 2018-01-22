@@ -39,11 +39,11 @@ var session = new Session(null, null, null, false, null);
 const port = 51337; // Registriere Port
 const server = net.createServer(); // Neue Server Instanz.
 
-db.initDatabase(); // Datenbank initialisieren
 server.listen(port); // Server Port öffnen.
 server.on('connection', clientConnectedEvent); // Event bei 'connection'
 server.on('error', errorEvent); // Event bei 'error'
 logger.setServer("register"); // Dem Logger den Namen des Servers übermitteln.
+db.initDatabase(); // Datenbank initialisieren
 
 logger.logInfo("Server gestartet. Port: " + port);
 
