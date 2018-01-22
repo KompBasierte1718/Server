@@ -1,3 +1,7 @@
+.gitignore
 node_modules/
 package-lock.json
 WebDB.db
+mailbox-db.js
+mailbox-server.js
+todo.txt
