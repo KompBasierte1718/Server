@@ -159,7 +159,7 @@ function devareKeyByCodeword(codeword) {
 function selectAllDevices(callback) {
     var db = openDB();
     var sql = 'SELECT * FROM Device';
-    db.get(sql, function(err, rows) {
+    db.all(sql, function(err, rows) {
         if(err) {
             logger.logError('closeDB', "Fehler: " + err.message);
             return;
@@ -201,7 +201,7 @@ function selectDeviceByName(name, callback) {
 function selectDeviceByKeyID(keyID, callback) {
     var db = openDB();
     var sql = 'SELECT * FROM Device WHERE key_id = ?';
-    db.get(sql,[keyID], function(err, rows) {
+    db.all(sql,[keyID], function(err, rows) {
         if(err) {
             logger.logError('closeDB', "Fehler: " + err.message);
             return;
@@ -215,7 +215,7 @@ function selectDeviceByKeyID(keyID, callback) {
 function selectAllKeys(callback) {
     var db = openDB();
     var sql = 'SELECT * FROM Key';
-    db.get(sql, [id], function(err, rows) {
+    db.all(sql, [id], function(err, rows) {
         if(err) {
             logger.logError('closeDB', "Fehler: " + err.message);
             return;
