@@ -1,3 +1,9 @@
+/* Dateiname: CRUD.js
+ * Beinhaltet grundlegende Datenbankoperationen fÃ¼r die Server Datenbank.
+ *
+ * Autor: Peter Dick
+ * Seit: 19.01.2017
+ */
 openDB = function() {
     const sqlite3 = require('sqlite3').verbose();
     let db = new sqlite3.Database('./WebDB.db', (err) => {
@@ -19,14 +25,14 @@ closeDB = function(db) {
     });
 }
 
-exports.insertSchluessel = function(codewort) {    
+exports.insertSchluessel = function(codewort) {
     let db = openDB();
     let sql = 'INSERT INTO Schluessel(Codewort, Ablaufdatum) VALUES(?, datetime("now"))';
     db.run(sql, [codewort], function(err) {
         if(err) {
             return console.error(err.message);
         }
-        console.log('Schlüssel eingefügt');
+        console.log('SchlÃ¼ssel eingefÃ¼gt');
     });
     closeDB(db);
 }
@@ -38,7 +44,7 @@ exports.insertGeraet = function(name, ipAdr, schluesselID) {
         if(err) {
             return console.error(err.message);
         }
-        console.log('Geraet eingefügt');
+        console.log('GerÃ¤t eingefÃ¼gt');
     });
     closeDB(db);
 }
@@ -50,7 +56,7 @@ exports.deleteGeraetID = function(id) {
         if(err) {
             return console.error(err.message);
         }
-        console.log('Geraet gelöscht');
+        console.log('Geraet gelÃ¼scht');
     });
     closeDB(db);
 }
@@ -62,7 +68,7 @@ exports.deleteGeraetName = function(name) {
         if(err) {
             return console.error(err.message);
         }
-        console.log('Geraet gelöscht');
+        console.log('Geraet gelÃ¼scht');
     });
     closeDB(db);
 }
@@ -74,7 +80,7 @@ exports.deleteSchluesselID = function(id) {
         if(err) {
             return console.error(err.message);
         }
-        console.log('Schlüssel gelöscht');
+        console.log('SchlÃ¼ssel gelÃ¼scht');
     });
     closeDB(db);
 }
