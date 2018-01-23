@@ -16,6 +16,7 @@ module.exports = {
     initDatabase: initDatabase,
     insertNewKey: insertNewKey,
     insertNewDevice: insertNewDevice,
+    deleteAll: deleteAll,
     deleteDeviceByID: deleteDeviceByID,
     deleteDeviceByName: deleteDeviceByName,
     deleteKeyByID: deleteKeyByID,
@@ -102,6 +103,26 @@ function insertNewDevice(name, ipAdr, keyid, callback) {
     closeDB(db);
 }
 
+function deleteAll() {
+    var db = openDB();
+    var sql = 'DROP TABLE Device';
+    db.run(sql, function(err) {
+        if(err) {
+            logger.logError('deleteAll', "Fehler: " + err.message);
+            return;
+        }
+        logger.logInfo('Tabele Device gelöscht');
+    });
+    sql = 'DROP TABLE Key';
+    db.run(sql, function(err) {
+        if(err) {
+            logger.logError('deleteAll', "Fehler: " + err.message);
+            return;
+        }
+        logger.logInfo('Tabele Key gelöscht');
+    });
+    closeDB(db); 
+}
 
 function deleteDeviceByID(id) {
     var db = openDB();
