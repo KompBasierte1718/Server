@@ -11,7 +11,7 @@
  // Referenzen einbinden.
 const net = require('net');
 const parseJSON = require('json-parse-async');
-const logger = require('./logger');
+const logger = require('./mailbox-logger');
 const helper = require('./mailbox-helper');
 
 

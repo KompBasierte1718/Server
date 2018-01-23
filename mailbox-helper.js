@@ -11,7 +11,7 @@
  */
 
 // Referenzen einbinden.
-const logger = require('./logger');
+const logger = require('./mailbox-logger');
 
 
 // Zu exportierende Objekte definieren.

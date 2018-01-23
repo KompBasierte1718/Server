@@ -8,7 +8,7 @@
 
 
 // Referenzen einbinden.
-const logger = require('./logger');
+const logger = require('./mailbox-logger');
 const sqlite3 = require('sqlite3');
 
 // Zu exportierende Objekte definieren.
