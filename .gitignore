@@ -1,4 +1,5 @@
-node_modules/
+todo.txt
+mailbox-server.js
 package-lock.json
 WebDB.db
-server.log
+Test.js
