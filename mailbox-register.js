@@ -187,13 +187,6 @@ function handleClientRequest(json, socket, protocol) {
 		session.codewords = json.password;
 		session.isReadyToPair = true;
 		logger.logInfo("Client möchte sich mit VA verbinden. Codewörter: " + session.codewords);
-    // Neuen Client und Schlüssel in Datenbank sichern.
-    db.insertNewKey(session.codewords);
-    var codewordID = null;
-    db.selectKeyByCodeword(session.codewords, function(rows) {
-      codewordID = rows.ID;
-    });
-    db.insertNewDevice(json.device, session.clientIP, codewordID);
 		endConnection(socket, protocol, 200, '{"answer": "WAITING FOR VA"}');
 	} else {
     // Die IP ist bereits bekannt.
@@ -206,12 +199,26 @@ function handleClientRequest(json, socket, protocol) {
     } else if(json.koppeln == "true") {
       // Client möchte sich mit dem bekannten VA koppeln.
       logger.logInfo("Client möchte Kopplung mit " + session.vaName + "(" + session.vaIP + ").");
-  		endConnection(socket, protocol, 200, '{"answer": "COUPLING DONE."}');
+      // Neuen Client und Schlüssel in Datenbank sichern.
+      if(!db.insertNewKey(session.codewords)) {
+        // Alter Eintrag, Ablaufdatum aktualisieren.
+        db.updateKeyByCodeword(session.codewords);
+      }
+      var codewordID = null;
+      db.selectKeyByCodeword(session.codewords, function(rows) {
+          codewordID = rows.ID;
+      });
+      if(!db.insertNewDevice(json.device, session.clientIP, codewordID)) {
+        db.updateDeviceByName(json.device, session.clientIP, codewordID);
+      }
+      endConnection(socket, protocol, 200, '{"answer": "COUPLING DONE."}');
     } else if (json.koppeln == "false") {
       // Client möchte sich mit dem bekannten VA nicht koppeln.
       helper.unregisterIP(ipArr, session.clientIP);
       session = new Session(null, null, null, false, null);
       logger.logInfo("Client möchte keine Kopplung. Session wird zurückgesetzt.");
+      db.deleteDeviceByName(json.device);
+      db.deleteKeyByCodeword(session.codewords);
   		endConnection(socket, protocol, 200, '{"answer": "NO COUPLING. SESSION RESET."}');
     } else {
       endFlawedConnection(socket, protocol, "Unerwartete Anfrage vom Client.", "unexpected request");

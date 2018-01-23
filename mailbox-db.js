@@ -29,8 +29,10 @@ module.exports = {
     selectKeyByID: selectKeyByID,
     selectKeyByCodeword: selectKeyByCodeword,
     updateKeyCodewordByID: updateKeyCodewordByID,
+    updateKeyByCodeword: updateKeyByCodeword,
     updateDeviceByID: updateDeviceByID,
-    updateDeviceKeyIDByID: updateDeviceKeyIDByID
+    updateDeviceKeyIDByID: updateDeviceKeyIDByID,
+    updateDeviceByName: updateDeviceByName
 }
 
 
@@ -80,12 +82,14 @@ function insertNewKey(codeword, callback) {
     db.run(sql, [codeword], function(err) {
         if(err) {
             logger.logError('insertNewKey', "Fehler: " + err.message);
-            return;
+            closeDB(db);
+            return false;
         }
         logger.logInfo('Schlüssel eingefügt.');
         callback(this.lastID);
     });
     closeDB(db);
+    return true;
 }
 
 
@@ -95,12 +99,14 @@ function insertNewDevice(name, ipAdr, keyid, callback) {
     db.run(sql, [name, ipAdr, keyid], function(err) {
         if(err) {
             logger.logError('insertNewDevice', "Fehler: " + err.message);
-            return;
+            closeDB(db);
+            return false;
         }
         logger.logInfo('Gerät eingefügt');
         callback(this.lastID);
     });
     closeDB(db);
+    return true;
 }
 
 function deleteAll() {
@@ -121,7 +127,7 @@ function deleteAll() {
         }
         logger.logInfo('Tabele Key gelöscht');
     });
-    closeDB(db); 
+    closeDB(db);
 }
 
 function deleteDeviceByID(id) {
@@ -301,6 +307,23 @@ function updateKeyCodewordByID(id, updateKey, newCodeword) {
 }
 
 
+function updateKeyByCodeword(codeword) {
+    var sql;
+    if(updateKey) {
+        sql = 'UPDATE Key SET expiration_date = datetime("now") WHERE codeword = ?';
+    }
+    var db = openDB();
+    db.run(sql, [codeword], function(err) {
+        if(err) {
+            logger.logError('updateKeyByCodeword', "Fehler: " + err.message);
+            return;
+        }
+        logger.logInfo('Zeilen aktualisiert: ' + this.changes);
+    });
+    closeDB(db);
+}
+
+
 function updateDeviceByID(id, newName, newIP, newKeyid) {
     var sql = 'UPDATE Device SET name = ?, ip_address = ?, key_id = ? WHERE id = ?';
     var db = openDB();
@@ -322,6 +345,20 @@ function updateDeviceKeyIDByID(id, newKeyid) {
         if(err) {
             logger.logError('updateDeviceKeyIDByID', "Fehler: " + err.message);
 
+            return;
+        }
+        logger.logInfo('Zeilen aktualisiert: ' + this.changes);
+    });
+    closeDB(db);
+}
+
+
+function updateDeviceByName(name, newIP, newKeyid) {
+    var sql = 'UPDATE Device SET ip_address = ?, key_id = ? WHERE name = ?';
+    var db = openDB();
+    db.run(sql, [newIP, newKeyid, name], function(err) {
+        if(err) {
+            logger.logError('updateDeviceByID', "Fehler: " + err.message);
             return;
         }
         logger.logInfo('Zeilen aktualisiert: ' + this.changes);
