@@ -73,7 +73,7 @@ function initDatabase() {
 }
 
 
-function insertNewKey(codeword) {
+function insertNewKey(codeword, callback) {
     var db = openDB();
     var sql = 'INSERT INTO Key(codeword, expiration_date) VALUES(?, datetime("now"))';
     db.run(sql, [codeword], function(err) {
@@ -82,12 +82,13 @@ function insertNewKey(codeword) {
             return;
         }
         logger.logInfo('Schlüssel eingefügt.');
+        callback(this.lastID);
     });
     closeDB(db);
 }
 
 
-function insertNewDevice(name, ipAdr, keyid) {
+function insertNewDevice(name, ipAdr, keyid, callback) {
     var db = openDB();
     var sql = 'INSERT INTO Device(name, ip_address, key_id) VALUES(?, ?, ?)';
     db.run(sql, [name, ipAdr, keyid], function(err) {
@@ -96,6 +97,7 @@ function insertNewDevice(name, ipAdr, keyid) {
             return;
         }
         logger.logInfo('Gerät eingefügt');
+        callback(this.lastID);
     });
     closeDB(db);
 }
