@@ -70,7 +70,7 @@ function clientConnectedEvent(sock) {
 			parseJSON(request.data, function(error, json) {
 				if(error) {
 					endFlawedConnection(sock, request.protocol,
-									"JSON konnte nicht geparst werden. Inhalt: " + data
+									"JSON konnte nicht geparst werden. Inhalt: " + request.data
 									+ "Fehler: " + error, "json not parsable");
 				} else {
 					logger.logInfo("JSON-Datei erforlgreich geparst.");
@@ -193,9 +193,14 @@ function handleClientRequest(json, socket, protocol) {
     if(json.getDevice) {
       // Client möchte die Kopplung mit dem VA bestätigen und brauch den Geräte-
       // Namen
-      logger.logInfo("Client fordert Informationen über Voice Assistent an.");
-      logger.logInfo("VA: " + session.vaName + "(" + session.vaIP + ").");
-      endConnection(socket, protocol, 200, '{"answer": "DEVICE:' + session.vaName + '"}');
+      if(session.vaName == null) {
+        logger.logInfo("Client möchte sich mit VA verbinden. Doch es gibt bisher keinen registrierten VA.");
+    		endConnection(socket, protocol, 200, '{"answer": "WAITING FOR VA"}');
+      } else {
+        logger.logInfo("Client fordert Informationen über Voice Assistent an.");
+        logger.logInfo("VA: " + session.vaName + "(" + session.vaIP + ").");
+        endConnection(socket, protocol, 200, '{"answer": "' + session.vaName + '"}');
+      }
     } else if(json.koppeln == "true") {
       // Client möchte sich mit dem bekannten VA koppeln.
       logger.logInfo("Client möchte Kopplung mit " + session.vaName + "(" + session.vaIP + ").");
