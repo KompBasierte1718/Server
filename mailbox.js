@@ -13,6 +13,7 @@ const net = require('net');
 const parseJSON = require('json-parse-async');
 const logger = require('./mailbox-logger');
 const helper = require('./mailbox-helper');
+const db = require('./mailbox-db');
 
 
 /* *** Globale Variablen *** */
@@ -23,8 +24,10 @@ const port = 41337; // Registriere Port
 const server = net.createServer(); // Neue Server Instanz.
 
 server.listen(port); // Server Port öffnen.
+server.on('error', errorEvent); // Event bei 'error'
 server.on('connection', clientConnectedEvent); // Event bei 'connection'
 logger.setServer("commands"); // Dem Logger den Namen des Servers übermitteln.
+db.initDatabase(); // Datenbank initialisieren
 
 logger.logInfo("Server gestartet. Port: " + port);
 
@@ -48,8 +51,8 @@ function clientConnectedEvent(sock) {
 		if(request.data == null) {
 			endFlawedConnection(sock, request.protocol, "Keine Daten, Verbindung wird geschloßen!", "no json");
 		} else {
-			parseJSON(request.data, function(err, content) {
-				if(err) {
+			parseJSON(request.data, function(error, json) {
+				if(error) {
 					endFlawedConnection(sock, request.protocol,
 									"JSON konnte nicht geparst werden. Inhalt: " + data
 									+ "Fehler: " + error, "json not parsable");
@@ -65,14 +68,36 @@ function clientConnectedEvent(sock) {
 	sock.on('end', function() {
 		logger.logInfo("Client bestätigt das Ende der Verbindung.");
 		sock.end();
-		logger.spacer();
 	}); // ENDE socket 'end'
+
+	// Fehler bei der Verbindung
+	sock.on('error', function() {
+	  logger.logError("connection", "Fehlerevent vom Socket.");
+	});
+
+	// Schließen der Verbindung nach Fehler
+	sock.on('close', function() {
+		logger.logInfo("Verbindung wird wegen 'close' Event geschloßen.");
+		sock.end();
+		logger.spacer();
+	});
 }
+
+
+/* errorEvent
+ * Behandelt auftretende Fehler.
+ */
+function errorEvent(error) {
+  logger.logError("connection", "Ein Fehler ist aufgetreten: " + error);
+  server.close();
+  throw error;
+}
+
 
 /* endConnection
  * Beendet die Verbindung zu einem Gerät.
  */
-function endConnection(socket, isHttp, httpHeader, data) {
+function endConnection(socket, protocol, status, message) {
 	logger.logInfo("Verbindung wird geschloßen!");
 	if(protocol == "http"){
 		socket.end(helper.headers(status) + message);
@@ -140,7 +165,7 @@ function checkDevice(json, socket, protocol) {
  */
 function handleClientRequest(json, socket, protocol) {
 	logger.logInfo("Ein PC Client hat sich verbunden!");
-	if(content.instructions) {
+	if(json.instructions) {
 				// Hier werden Befehle an den Anfrageneden Client gesendet!
 				if(instruction != null) {
 					// Der Befehl wird abgeschickt und deswegen gelöscht.
@@ -163,8 +188,8 @@ function handleClientRequest(json, socket, protocol) {
  */
 function handleGoogleRequest(json, socket, protocol) {
 	logger.logInfo("Ein Google Gerät hat sich verbunden!");
-	if(content.result.metadata.intentName == "Programm starten") {
-		instruction = content.result.parameters.program;
+	if(json.result.metadata.intentName == "Programm starten") {
+		instruction = json.result.parameters.program;
 		logger.logInfo("Neuer Befehl: " + instruction);
 		endGoogleConnection(socket, "Gebe den Befehl weiter.");
 	}
@@ -175,8 +200,8 @@ function handleGoogleRequest(json, socket, protocol) {
  */
 function handleAlexaRequest(json, socket, protocol) {
 	logger.logInfo("Ein Alexa Gerät hat sich verbunden!");
-	if(content.instruction) {
-			instruction = content.instruction
+	if(json.instruction) {
+			instruction = json.instruction
 			logger.logInfo("Neuer Befehl: " + instruction);
 			endAlexaConnection(socket, "Gebe den Befehl weiter.");
 	}
