@@ -14,6 +14,7 @@ const parseJSON = require('json-parse-async');
 const logger = require('./mailbox-logger');
 const helper = require('./mailbox-helper');
 const db = require('./mailbox-db');
+const fh = require('./mailbox-filehandler');
 
 
 /* *** Globale Variablen *** */
