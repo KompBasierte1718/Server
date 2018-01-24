@@ -74,7 +74,6 @@ function clientConnectedEvent(sock) {
 									+ "Fehler: " + error, "json not parsable");
 				} else {
 					logger.logInfo("JSON-Datei erforlgreich geparst.");
-          console.log(request.data);
 					checkDevice(json, sock, request.protocol);
 				}
 			}); // Ende parseJSON
@@ -165,47 +164,37 @@ function checkDevice(json, socket, protocol) {
  */
 function handleGoogleRequest(json, socket, protocol) {
 	logger.logInfo("Google Home hat sich verbunden!");
-	session.vaIP = getIP(socket.remoteAddress);
+	session.vaIP = helper.getIP(socket.remoteAddress);
   session.vaName = "Google Home";
 	if("Koppeln" == json.result.metadata.intentName) {
 		logger.logInfo("Google Home möchte sich mit einem Client verbinden.");
 		var vaCodewords = json.result.parameters.codewords;
-    var keyID = null;
 
     // Key vorhaden?
     db.selectKeyByCodeword(vaCodewords, function(rows) {
       if(rows != undefined) {
-        keyID = rows.id;
+        // Key ist vorhanden! PCClient mit dem key vorhanden?
+        var keyID = rows.id;
+        db.selectDeviceByKeyID(keyID, function(rows2) {
+          for(var i = 0; i < rows2.length; i++) {
+            if(rows2[i].name == "pcclient") {
+              // PClient und Key in der DB
+              logger.logInfo("Verbindung zwischen Client (" + session.clientIP + ") und VA(" + session.vaIP + ") erstellt.");
+              // Neuen VA in Datenbank sichern.
+              if(!db.insertNewDevice(json.device, session.vaIP, keyID)) {
+                db.updateDeviceByName(json.device, session.vaIP, keyID);
+              }
+              endGoogleConnection(socket, "Mit Client gekoppelt.");
+              return;
+            }
+          }
+          endGoogleConnection(socket, "Falsche Codewörter, es findet keine Kopplung statt.");
+        });
+      } else {
+        endGoogleConnection(socket, "Client möchte bisher keine Kopplung herstellen.");
       }
     });
 
-    // Key ist vorhanden! PCClient mit dem key vorhanden?
-    session.codewords = false;
-    if(keyID != null) {
-      db.selectDeviceByKeyID(keyID, function(rows) {
-        for(var i = 0; i < rows.length; i++) {
-          if(rows.name == "pcclient") {
-            session.codewords = true;
-            return;
-          }
-        }
-      });
-    } else {
-      endGoogleConnection(socket, "Client möchte bisher keine Kopplung herstellen.");
-      return;
-    }
-
-	  if(session.codewords) {
-      // PClient und Key in der DB
-			logger.logInfo("Verbindung zwischen Client (" + session.clientIP + ") und VA(" + session.vaIP + ") erstellt.");
-      // Neuen VA in Datenbank sichern.
-      if(!db.insertNewDevice(json.device, session.clientIP, keyID)) {
-        db.updateDeviceByName(json.device, session.clientIP, keyID);
-      }
-			endGoogleConnection(socket, "Mit Client gekoppelt.");
-		} else if(!session.codewords) {
-			endGoogleConnection(socket, "Falsche Codewörter, es findet keine Kopplung statt.");
-		}
 	} else if("Entkoppeln" == json.result.metadata.intentName) {
 		session.vaIP = null;
     session.vaName = null;

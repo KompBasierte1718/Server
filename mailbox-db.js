@@ -86,7 +86,9 @@ function insertNewKey(codeword, callback) {
             return false;
         }
         logger.logInfo('Schlüssel eingefügt.');
-        callback(this.lastID);
+        if(callback != undefined) {
+          callback(this.lastID);
+        }
     });
     closeDB(db);
     return true;
@@ -103,7 +105,9 @@ function insertNewDevice(name, ipAdr, keyid, callback) {
             return false;
         }
         logger.logInfo('Gerät eingefügt');
-        callback(this.lastID);
+        if(callback != undefined) {
+          callback(this.lastID);
+        }
     });
     closeDB(db);
     return true;
