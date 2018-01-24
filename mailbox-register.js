@@ -131,16 +131,6 @@ function endFlawedConnection(socket, protocol, errLog, errJSON) {
 }
 
 
-/* endGoogleConnection
- * Beendet eine Google Verbindung. Hierbei muss die zurück gesendete JSON-Datei
- * ein bestimmtes Format vorweisen.
- */
-function endGoogleConnection(socket, message) {
-	logger.logInfo(message);
-	endConnection(socket, "http", 200, '{"speech": "' + message + '","displayText": "' + message + '"}');
-}
-
-
 /* endAlexaConnection
  * Beendet eine Alexa verbindung.
  */
@@ -164,12 +154,7 @@ function checkDevice(json, socket, protocol) {
 			handleAlexaRequest(json, socket, protocol);
 			break;
 		default:
-			if(json.result != undefined) {
-				// Google bietet keine Möglichkeit die JSON-Datei anzupassen.
-				handleGoogleRequest(json, socket, protocol);
-			} else {
-				endFlawedConnection(socket, protocol, "Unbekanntes Gerät.", "unknown device");
-			}
+			endFlawedConnection(socket, protocol, "Unbekanntes Gerät.", "unknown device");
 	}
 }
 
@@ -236,37 +221,6 @@ function handleClientRequest(json, socket, protocol) {
     } else {
       endFlawedConnection(socket, protocol, "Unerwartete Anfrage vom Client.", "unexpected request");
     }
-  }
-}
-
-
-/* handleGoogleRequest
- * Behandelt Anfragen des Google VAs.
- */
-function handleGoogleRequest(json, socket, protocol) {
-	logger.logInfo("Google Home hat sich verbunden!");
-	session.vaIP = getIP(socket.remoteAddress);
-  session.vaName = "Google Home";
-	if("Koppeln" == json.result.metadata.intentName) {
-		logger.logInfo("Google Home möchte sich mit einem Client verbinden.");
-		var vaCodewords = json.result.parameters.codewords;
-		if(!session.isReadyToPair) {
-			endGoogleConnection(socket, "Client möchte bisher keine Kopplung herstellen.");
-	  } else if(session.codewords == vaCodewords) {
-			logger.logInfo("Verbindung zwischen Client (" + session.clientIP + ") und VA(" + session.vaIP + ") erstellt.");
-			endGoogleConnection(socket, "Mit Client gekoppelt.");
-		} else if(session.codewords != vaCodewords) {
-			endGoogleConnection(socket, "Falsche Codewörter, es findet keine Kopplung statt.");
-		}
-	} else if("Entkoppeln" == json.result.metadata.intentName) {
-		session.vaIP = null;
-    session.vaName = null;
-		logger.logInfo("Verbindung zwischen Client (" + getLastRegisteredIP() + ") und VA(" + session.vaIP + ") gelöscht.");
-		endGoogleConnection(socket, "Kopplung mit Client aufgehoben.");
-	} else {
-    session.vaIP = null;
-    session.vaName = null;
-		endGoogleConnection(socket, "Unerwartete Anfrage.");
   }
 }
 

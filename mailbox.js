@@ -117,16 +117,6 @@ function endFlawedConnection(socket, protocol, errLog, errJSON) {
 }
 
 
-/* endGoogleConnection
- * Beendet eine Google Verbindung. Hierbei muss die zurück gesendete JSON-Datei
- * ein bestimmtes Format vorweisen.
- */
-function endGoogleConnection(socket, message) {
-	logger.logInfo(message);
-	endConnection(socket, "http", 200, '{"speech": "' + message + '","displayText": "' + message + '"}');
-}
-
-
 /* endAlexaConnection
  * Beendet eine Alexa verbindung.
  */
@@ -150,12 +140,7 @@ function checkDevice(json, socket, protocol) {
 			handleAlexaRequest(json, socket, protocol);
 			break;
 		default:
-			if(json.result != undefined) {
-				// Google bietet keine Möglichkeit die JSON-Datei anzupassen.
-				handleGoogleRequest(json, socket, protocol);
-			} else {
-				endFlawedConnection(socket, protocol, "Unbekanntes Gerät.", "unknown device");
-			}
+			endFlawedConnection(socket, protocol, "Unbekanntes Gerät.", "unknown device");
 	}
 }
 
@@ -182,18 +167,6 @@ function handleClientRequest(json, socket, protocol) {
 		}
 }
 
-
-/* handleGoogleRequest
- * Behandelt Anfragen des Google VAs.
- */
-function handleGoogleRequest(json, socket, protocol) {
-	logger.logInfo("Ein Google Gerät hat sich verbunden!");
-	if(json.result.metadata.intentName == "Programm starten") {
-		instruction = json.result.parameters.program;
-		logger.logInfo("Neuer Befehl: " + instruction);
-		endGoogleConnection(socket, "Gebe den Befehl weiter.");
-	}
-}
 
 /* handleAlexaRequest
  * Behandelt Anfragen des Alexa VAs.
