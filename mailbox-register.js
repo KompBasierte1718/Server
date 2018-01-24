@@ -14,6 +14,7 @@ const parseJSON = require('json-parse-async');
 const logger = require('./mailbox-logger');
 const helper = require('./mailbox-helper');
 const db = require('./mailbox-db');
+const fh = require('./mailbox-filehandler');
 
 
 /* Session
@@ -179,7 +180,19 @@ function handleClientRequest(json, socket, protocol) {
 		  session.codewords = json.password;
 		  session.isReadyToPair = true;
 		  logger.logInfo("Client möchte sich mit VA verbinden. Codewörter: " + session.codewords);
-		  endConnection(socket, protocol, 200, '{"answer": "WAITING FOR VA"}');
+      // Neuen Client und Schlüssel in Datenbank sichern.
+      if(!db.insertNewKey(session.codewords)) {
+        // Alter Eintrag, Ablaufdatum aktualisieren.
+        db.updateKeyByCodeword(session.codewords);
+      }
+      var codewordID = null;
+      db.selectKeyByCodeword(session.codewords, function(rows) {
+          codewordID = rows.ID;
+      });
+      if(!db.insertNewDevice(json.device, session.clientIP, codewordID)) {
+        db.updateDeviceByName(json.device, session.clientIP, codewordID);
+      }
+      endConnection(socket, protocol, 200, '{"answer": "WAITING FOR VA"}');
     }
 	} else {
     // Die IP ist bereits bekannt.
@@ -197,18 +210,6 @@ function handleClientRequest(json, socket, protocol) {
     } else if(json.koppeln == "true") {
       // Client möchte sich mit dem bekannten VA koppeln.
       logger.logInfo("Client möchte Kopplung mit " + session.vaName + "(" + session.vaIP + ").");
-      // Neuen Client und Schlüssel in Datenbank sichern.
-      if(!db.insertNewKey(session.codewords)) {
-        // Alter Eintrag, Ablaufdatum aktualisieren.
-        db.updateKeyByCodeword(session.codewords);
-      }
-      var codewordID = null;
-      db.selectKeyByCodeword(session.codewords, function(rows) {
-          codewordID = rows.ID;
-      });
-      if(!db.insertNewDevice(json.device, session.clientIP, codewordID)) {
-        db.updateDeviceByName(json.device, session.clientIP, codewordID);
-      }
       endConnection(socket, protocol, 200, '{"answer": "COUPLING DONE."}');
     } else if (json.koppeln == "false") {
       // Client möchte sich mit dem bekannten VA nicht koppeln.

@@ -153,12 +153,12 @@ function handleClientRequest(json, socket, protocol) {
 	logger.logInfo("Ein PC Client hat sich verbunden!");
 	if(json.instructions) {
 				// Hier werden Befehle an den Anfrageneden Client gesendet!
-				if(instruction != null) {
+				var instruction = fh.readFile();
+				if(instruction.length > 1) {
 					// Der Befehl wird abgeschickt und deswegen gelöscht.
-					var tempInstruction = instruction;
-					instruction = null;
-					logger.logInfo("Sende neuen Befehl '" + tempInstruction + "' an PC Client");
-					endConnection(socket, protocol, 200, '{"answer": "NEW COMMAND", "program": "' + tempInstruction + '"}');
+					fh.writeFile("");
+					logger.logInfo("Sende neuen Befehl '" + instruction + "' an PC Client");
+					endConnection(socket, protocol, 200, '{"answer": "NEW COMMAND", "program": "' + instruction + '"}');
 				} else {
 					logger.logInfo("Keine neuen Befehle vorhanden!");
 					endConnection(socket, protocol, 400, '{"answer": "NO COMMANDS"}');
@@ -177,6 +177,7 @@ function handleAlexaRequest(json, socket, protocol) {
 	if(json.instruction) {
 			instruction = json.instruction
 			logger.logInfo("Neuer Befehl: " + instruction);
+			fh.writeFile(instruction);
 			endAlexaConnection(socket, "Gebe den Befehl weiter.");
 	}
 }

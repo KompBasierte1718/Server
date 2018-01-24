@@ -14,6 +14,7 @@ const parseJSON = require('json-parse-async');
 const logger = require('./mailbox-logger');
 const helper = require('./mailbox-helper');
 const db = require('./mailbox-db');
+const fh = require('./mailbox-filehandler');
 
 
 /* Session
@@ -169,22 +170,52 @@ function handleGoogleRequest(json, socket, protocol) {
 	if("Koppeln" == json.result.metadata.intentName) {
 		logger.logInfo("Google Home möchte sich mit einem Client verbinden.");
 		var vaCodewords = json.result.parameters.codewords;
-		if(!session.isReadyToPair) {
-			endGoogleConnection(socket, "Client möchte bisher keine Kopplung herstellen.");
-	  } else if(session.codewords == vaCodewords) {
+    var keyID = null;
+
+    // Key vorhaden?
+    db.selectKeyByCodeword(vaCodewords, function(rows) {
+      if(rows != undefined) {
+        keyID = rows.id;
+      }
+    });
+
+    // Key ist vorhanden! PCClient mit dem key vorhanden?
+    session.codewords = false;
+    if(keyID != null) {
+      db.selectDeviceByKeyID(keyID, function(rows) {
+        for(var i = 0; i < rows.length; i++) {
+          if(rows.name == "pcclient") {
+            session.codewords = true;
+            return;
+          }
+        }
+      });
+    } else {
+      endGoogleConnection(socket, "Client möchte bisher keine Kopplung herstellen.");
+      return;
+    }
+
+	  if(session.codewords) {
+      // PClient und Key in der DB
 			logger.logInfo("Verbindung zwischen Client (" + session.clientIP + ") und VA(" + session.vaIP + ") erstellt.");
+      // Neuen VA in Datenbank sichern.
+      if(!db.insertNewDevice(json.device, session.clientIP, keyID)) {
+        db.updateDeviceByName(json.device, session.clientIP, keyID);
+      }
 			endGoogleConnection(socket, "Mit Client gekoppelt.");
-		} else if(session.codewords != vaCodewords) {
+		} else if(!session.codewords) {
 			endGoogleConnection(socket, "Falsche Codewörter, es findet keine Kopplung statt.");
 		}
 	} else if("Entkoppeln" == json.result.metadata.intentName) {
 		session.vaIP = null;
     session.vaName = null;
 		logger.logInfo("Verbindung zwischen Client (" + getLastRegisteredIP() + ") und VA(" + session.vaIP + ") gelöscht.");
-		endGoogleConnection(socket, "Kopplung mit Client aufgehoben.");
+    db.deleteDeviceByName(json.device);
+    endGoogleConnection(socket, "Kopplung mit Client aufgehoben.");
 	} else	if(json.result.metadata.intentName == "Programm starten") {
   		instruction = json.result.parameters.program;
   		logger.logInfo("Neuer Befehl: " + instruction);
+      fh.writeFile(instruction);
   		endGoogleConnection(socket, "Gebe den Befehl weiter.");
   } else {
     session.vaIP = null;
