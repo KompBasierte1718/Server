@@ -39,13 +39,12 @@ var session = new Session(null, null, null, false, null);
 const port = 51337; // Registriere Port
 const server = net.createServer(); // Neue Server Instanz.
 
+logger.logInfo("Server starten. Port: " + port);
 server.listen(port); // Server Port öffnen.
 server.on('connection', clientConnectedEvent); // Event bei 'connection'
 server.on('error', errorEvent); // Event bei 'error'
 logger.setServer("register"); // Dem Logger den Namen des Servers übermitteln.
 db.initDatabase(); // Datenbank initialisieren
-
-logger.logInfo("Server gestartet. Port: " + port);
 
 
 /* ************************* SERVER-FUNKTIONEN ****************************** */
@@ -65,7 +64,7 @@ function clientConnectedEvent(sock) {
 		var request = helper.splitRequest(data);
 
 		if(request.data == null) {
-			endFlawedConnection(sock, request.protocol, "Keine Daten, Verbindung wird geschloßen!", "no json");
+			//endFlawedConnection(sock, request.protocol, "Keine Daten, Verbindung wird geschloßen!", "no json");
 		} else {
 			parseJSON(request.data, function(error, json) {
 				if(error) {
@@ -183,11 +182,20 @@ function handleClientRequest(json, socket, protocol) {
 	if(helper.registerIP(ipArr, socket.remoteAddress)) {
 		// Eine neue IP wurde registriert. Der Client möchte sich mit einem Voice
 		// Assistent verbinden.
-		session.clientIP = helper.getLastRegisteredIP(ipArr);
-		session.codewords = json.password;
-		session.isReadyToPair = true;
-		logger.logInfo("Client möchte sich mit VA verbinden. Codewörter: " + session.codewords);
-		endConnection(socket, protocol, 200, '{"answer": "WAITING FOR VA"}');
+    if(json.password == undefined) {
+      // Kein 'passwords'
+      console.log("Keine Codewords");
+      session = new Session(null, null, null, false, null);
+      logger.logInfo("Neuer Client schickte keine Codewörter.");
+      helper.unregisterIP(ipArr, socket.remoteAddress);
+    } else {
+      // Codewörter bekommen
+		  session.clientIP = helper.getLastRegisteredIP(ipArr);
+		  session.codewords = json.password;
+		  session.isReadyToPair = true;
+		  logger.logInfo("Client möchte sich mit VA verbinden. Codewörter: " + session.codewords);
+		  endConnection(socket, protocol, 200, '{"answer": "WAITING FOR VA"}');
+    }
 	} else {
     // Die IP ist bereits bekannt.
     if(json.getDevice) {
@@ -268,7 +276,7 @@ function handleGoogleRequest(json, socket, protocol) {
  */
 function handleAlexaRequest(json, socket, protocol) {
 	logger.logInfo("Alexa hat sich verbunden!");
-	session.vaIP = getIP(socket.remoteAddress);
+	session.vaIP = helper.getIP(socket.remoteAddress);
   session.vaName = "Alexa";
 	if(json.koppeln != undefined) {
 		logger.logInfo("Alexa möchte sich mit einem Client verbinden.");
