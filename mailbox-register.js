@@ -26,14 +26,13 @@ function Session(clientIP, vaIP, vaName, readyToPair, codewords) {
   this.clientIP = helper.getIP(clientIP);
   this.vaIP = helper.getIP(vaIP);
   this.vaName = vaName;
-  this.readyToPair = readyToPair;
   this.codewords = codewords;
 }
 
 
 /* *** Globale Zustandsvariablen *** */
 var ipArr = new Array();
-var session = new Session(null, null, null, false, null);
+var session = new Session(null, null, null, null, null);
 
 
 /* *** Server initialisieren *** */
@@ -166,7 +165,7 @@ function checkDevice(json, socket, protocol) {
  */
 function handleClientRequest(json, socket, protocol) {
 	logger.logInfo("Ein PC Client hat sich verbunden!");
-	if(helper.registerIP(ipArr, socket.remoteAddress)) {
+	if(helper.registerIP(ipArr, socket.remoteAddress)) { // DEPRECATED TODO
 		// Eine neue IP wurde registriert. Der Client möchte sich mit einem Voice
 		// Assistent verbinden.
     if(json.password == undefined) {
@@ -212,19 +211,30 @@ function handleClientRequest(json, socket, protocol) {
     if(json.getDevice) {
       // Client möchte die Kopplung mit dem VA bestätigen und brauch den Geräte-
       // Namen
-      if(session.vaName == null) {
-        logger.logInfo("Client möchte sich mit VA verbinden. Doch es gibt bisher keinen registrierten VA.");
-    		endConnection(socket, protocol, 200, '{"answer": "WAITING FOR VA"}');
-      } else {
-        logger.logInfo("Client fordert Informationen über Voice Assistent an.");
-        logger.logInfo("VA: " + session.vaName + "(" + session.vaIP + ").");
-        endConnection(socket, protocol, 200, '{"answer": "' + session.vaName + '"}');
-      }
-    } else if(json.koppeln == "true") {
+      db.selectDeviceByName(json.device, function(rows) {
+        db.selectDeviceByKeyID(rows.key_id, function(inner_rows) {
+          for(var i = 0; i < inner_rows; i++) {
+            if(inner_rows[i].name != "pcclient") {
+              // Ein registrierter VA mit selber Key ID
+              console.log("VA gefunden: " + inner_rows[i].name);
+              session.vaName = inner_rows[i].name;
+              session.vaIP = inner_rows[i].ip_address;
+              logger.logInfo("Client fordert Informationen über Voice Assistent an.");
+              logger.logInfo("VA: " + session.vaName + "(" + session.vaIP + ").");
+              endConnection(socket, protocol, 200, '{"answer": "' + session.vaName + '"}');
+              return;
+            }
+          }
+          console.log("Kein VA gefunden!");
+          logger.logInfo("Client möchte sich mit VA verbinden. Doch es gibt bisher keinen registrierten VA.");
+          endConnection(socket, protocol, 200, '{"answer": "WAITING FOR VA"}');
+        });
+      });
+    } else if(json.koppeln == "true" && session.vaName != null) {
       // Client möchte sich mit dem bekannten VA koppeln.
       logger.logInfo("Client möchte Kopplung mit " + session.vaName + "(" + session.vaIP + ").");
       endConnection(socket, protocol, 200, '{"answer": "COUPLING DONE."}');
-    } else if (json.koppeln == "false") {
+    } else if (json.koppeln == "false" && session.vaName != null) {
       // Client möchte sich mit dem bekannten VA nicht koppeln.
       helper.unregisterIP(ipArr, session.clientIP);
       session = new Session(null, null, null, false, null);
