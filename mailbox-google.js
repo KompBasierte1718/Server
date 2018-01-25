@@ -179,10 +179,10 @@ function handleGoogleRequest(json, socket, protocol) {
           for(var i = 0; i < rows2.length; i++) {
             if(rows2[i].name == "pcclient") {
               // PClient und Key in der DB
-              logger.logInfo("Verbindung zwischen Client (" + session.clientIP + ") und VA(" + session.vaIP + ") erstellt.");
+              logger.logInfo("Verbindung zwischen Client (" + rows2[i].ip_address + ") und VA(" + session.vaIP + ") erstellt.");
               // Neuen VA in Datenbank sichern.
-              if(!db.insertNewDevice(json.device, session.vaIP, keyID)) {
-                db.updateDeviceByName(json.device, session.vaIP, keyID);
+              if(!db.insertNewDevice(session.vaName, session.vaIP, keyID)) {
+                db.updateDeviceByName(session.vaName, session.vaIP, keyID);
               }
               endGoogleConnection(socket, "Mit Client gekoppelt.");
               return;
