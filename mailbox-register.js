@@ -65,6 +65,7 @@ function clientConnectedEvent(sock) {
 		var request = helper.splitRequest(data);
 
 		if(request.data == null) {
+      sock.write('{"ERROR": "no json"}');
 			//endFlawedConnection(sock, request.protocol, "Keine Daten, Verbindung wird geschloßen!", "no json");
 		} else {
 			parseJSON(request.data, function(error, json) {
