@@ -312,10 +312,7 @@ function updateKeyCodewordByID(id, updateKey, newCodeword) {
 
 
 function updateKeyByCodeword(codeword) {
-    var sql;
-    if(updateKey) {
-        sql = 'UPDATE Key SET expiration_date = datetime("now") WHERE codeword = ?';
-    }
+    var sql = 'UPDATE Key SET expiration_date = datetime("now") WHERE codeword = ?';
     var db = openDB();
     db.run(sql, [codeword], function(err) {
         if(err) {
