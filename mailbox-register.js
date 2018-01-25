@@ -231,20 +231,36 @@ function handleClientRequest(json, socket, protocol) {
  * Behandelt Anfragen des Alexa VAs.
  */
 function handleAlexaRequest(json, socket, protocol) {
-	logger.logInfo("Alexa hat sich verbunden!");
+	logger.logInfo(json.device + " hat sich verbunden!");
 	session.vaIP = helper.getIP(socket.remoteAddress);
-  session.vaName = "Alexa";
+  session.vaName = json.device;
 	if(json.koppeln != undefined) {
-		logger.logInfo("Alexa möchte sich mit einem Client verbinden.");
+		logger.logInfo(session.vaName + " möchte sich mit einem Client verbinden.");
 		var vaCodewords = json.koppeln.word1 + " " + json.koppeln.word2;
-		if(!session.isReadyToPair) {
-			endAlexaConnection(socket, "Client möchte bisher keine Kopplung herstellen.");
-		} else if(session.codewords == vaCodewords) {
-			logger.logInfo("Verbindung zwischen Client (" + session.clientIP + ") und VA(" + session.vaIP + ") erstellt.");
-			endAlexaConnection(socket, "Mit Client gekoppelt.");
-		} else if(session.codewords != vaCodewords) {
-			endAlexaConnection(socket, "Falsche Codewörter, es findet keine Kopplung statt.");
-		}
+    // Key vorhaden?
+    db.selectKeyByCodeword(vaCodewords, function(rows) {
+      if(rows != undefined) {
+        // Key ist vorhanden! PCClient mit dem key vorhanden?
+        var keyID = rows.id;
+        db.selectDeviceByKeyID(keyID, function(rows2) {
+          for(var i = 0; i < rows2.length; i++) {
+            if(rows2[i].name == "pcclient") {
+              // PClient und Key in der DB
+              logger.logInfo("Verbindung zwischen Client (" + session.clientIP + ") und VA(" + session.vaIP + ") erstellt.");
+              // Neuen VA in Datenbank sichern.
+              if(!db.insertNewDevice(json.device, session.vaIP, keyID)) {
+                db.updateDeviceByName(json.device, session.vaIP, keyID);
+              }
+              endAlexaConnection(socket, "Mit Client gekoppelt.");
+              return;
+            }
+          }
+          endAlexaConnection(socket, "Falsche Codewörter, es findet keine Kopplung statt.");
+        });
+      } else {
+        endAlexaConnection(socket, "Client möchte bisher keine Kopplung herstellen.");
+      }
+    });
 	} else {
     session.vaIP = null;
     session.vaName = null;
