@@ -21,7 +21,9 @@ module.exports = {
   getIP: getIP,
   registerIP: registerIP,
   unregisterIP: unregisterIP,
-  getLastRegisteredIP: getLastRegisteredIP
+  getLastRegisteredIP: getLastRegisteredIP,
+  buildDeviceName: buildDeviceName,
+  spliteDeviceName: spliteDeviceName
 }
 
 
@@ -232,4 +234,35 @@ function unregisterIP(ipArr, ip) {
  */
 function getLastRegisteredIP(ipArr) {
 	return ipArr[ipArr.length-1];
+}
+
+
+/* buildDeviceName
+ * Hängt eine eindeutige Device ID an den Device Namen.
+ */
+function buildDeviceName(name, id) {
+  if(id == null || id == undefined) {
+    return name;
+  }
+  return name + "_" + id;
+}
+
+
+/* splitDeviceName
+ * Spaltet den DeviceNamen aus der DB auf in Namen und id.
+ */
+function splitDeviceName(name) {
+  if(name == null || name == undefined) {
+    return null;
+  }
+  var underscore = name.indexOf("_");
+  if(underscore == -1) {
+    return null;
+  }
+
+  var deviceArr = new Array();
+  deviceArr.push(name.substring(0, underscore)); // Name
+  deviceArr.push(name.substring(underscore)); // ID
+
+  return deviceArr;
 }
