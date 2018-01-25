@@ -171,7 +171,6 @@ function handleClientRequest(json, socket, protocol) {
 		// Assistent verbinden.
     if(json.password == undefined) {
       // Kein 'passwords'
-      console.log("Keine Codewords");
       session = new Session(null, null, null, false, null);
       logger.logInfo("Neuer Client schickte keine Codewörter.");
       helper.unregisterIP(ipArr, socket.remoteAddress);
@@ -185,16 +184,27 @@ function handleClientRequest(json, socket, protocol) {
       db.selectKeyByCodeword(session.codewords, function(rows) {
         if(rows == undefined) {
           // Key noch nicht vorhanden
-          db.insertNewKey(session.codewords);
+          db.insertNewKey(session.codewords, function(lastID) {
+            db.selectDeviceByName(json.device, function(row) {
+              if(row == undefined) {
+                db.insertNewDevice(json.device, session.clientIP, lastID);
+              } else {
+                db.updateDeviceByName(json.device, session.clientIP, lastID);
+              }
+            });
+          });
         } else {
           // Alter Eintrag, Ablaufdatum aktualisieren.
           db.updateKeyByCodeword(session.codewords);
-        }
-        if(!db.insertNewDevice(json.device, session.clientIP, rows.id)) {
-          db.updateDeviceByName(json.device, session.clientIP, rows.id);
+          db.selectDeviceByName(json.device, function(row) {
+            if(row == undefined) {
+              db.insertNewDevice(json.device, session.clientIP, rows.id);
+            } else {
+              db.updateDeviceByName(json.device, session.clientIP, rows.id);
+            }
+          });
         }
       });
-
       endConnection(socket, protocol, 200, '{"answer": "WAITING FOR VA"}');
     }
 	} else {
