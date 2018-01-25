@@ -182,17 +182,19 @@ function handleClientRequest(json, socket, protocol) {
 		  session.isReadyToPair = true;
 		  logger.logInfo("Client möchte sich mit VA verbinden. Codewörter: " + session.codewords);
       // Neuen Client und Schlüssel in Datenbank sichern.
-      if(!db.insertNewKey(session.codewords)) {
-        // Alter Eintrag, Ablaufdatum aktualisieren.
-        db.updateKeyByCodeword(session.codewords);
-      }
-      var codewordID = null;
       db.selectKeyByCodeword(session.codewords, function(rows) {
-          codewordID = rows.ID;
+        if(rows == undefined) {
+          // Key noch nicht vorhanden
+          db.insertNewKey(session.codewords);
+        } else {
+          // Alter Eintrag, Ablaufdatum aktualisieren.
+          db.updateKeyByCodeword(session.codewords);
+        }
+        if(!db.insertNewDevice(json.device, session.clientIP, rows.id)) {
+          db.updateDeviceByName(json.device, session.clientIP, rows.id);
+        }
       });
-      if(!db.insertNewDevice(json.device, session.clientIP, codewordID)) {
-        db.updateDeviceByName(json.device, session.clientIP, codewordID);
-      }
+
       endConnection(socket, protocol, 200, '{"answer": "WAITING FOR VA"}');
     }
 	} else {
@@ -246,7 +248,8 @@ function handleAlexaRequest(json, socket, protocol) {
           for(var i = 0; i < rows2.length; i++) {
             if(rows2[i].name == "pcclient") {
               // PClient und Key in der DB
-              logger.logInfo("Verbindung zwischen Client (" + session.clientIP + ") und VA(" + session.vaIP + ") erstellt.");
+              logger.logInfo("Verbindung zwischen Client (" + session.clientIP
+                    + ") und VA(" + session.vaIP + ") erstellt.");
               // Neuen VA in Datenbank sichern.
               if(!db.insertNewDevice(json.device, session.vaIP, keyID)) {
                 db.updateDeviceByName(json.device, session.vaIP, keyID);
