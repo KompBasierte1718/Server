@@ -205,7 +205,6 @@ function handleClientRequest(json, socket, protocol) {
         for(var i = 0; i < inner_rows; i++) {
           if(inner_rows[i].name != "pcclient") {
             // Ein registrierter VA mit selber Key ID
-            console.log("VA gefunden: " + inner_rows[i].name);
             session.vaName = inner_rows[i].name;
             session.vaIP = inner_rows[i].ip_address;
             logger.logInfo("Client fordert Informationen über Voice Assistent an.");
@@ -214,7 +213,6 @@ function handleClientRequest(json, socket, protocol) {
             return;
           }
         }
-        console.log("Kein VA gefunden!");
         logger.logInfo("Client möchte sich mit VA verbinden. Doch es gibt bisher keinen registrierten VA.");
         endConnection(socket, protocol, 200, '{"answer": "WAITING FOR VA"}');
       });
