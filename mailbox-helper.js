@@ -23,7 +23,7 @@ module.exports = {
   unregisterIP: unregisterIP,
   getLastRegisteredIP: getLastRegisteredIP,
   buildDeviceName: buildDeviceName,
-  spliteDeviceName: spliteDeviceName
+  splitDeviceName: splitDeviceName
 }
 
 
