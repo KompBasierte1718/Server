@@ -43,7 +43,6 @@ function openDB() {
             logger.logError('openDB', "Fehler: " + err.message);
             return;
         }
-        logger.logInfo('Datenbankverbindung hergestellt.');
     });
     return db;
 }
@@ -55,23 +54,19 @@ function closeDB(db) {
             logger.logError('closeDB', "Fehler: " + err.message);
             return;
         }
-        logger.logInfo('Datenbankverbindung hergestellt.');
     });
 }
 
 
 function initDatabase() {
     var db = openDB();
-    logger.logInfo('Erstelle Tabelle Key.');
     db.run('CREATE TABLE IF NOT EXISTS Key ( id INTEGER NOT NULL,'
            +'codeword TEXT NOT NULL UNIQUE, expiration_date TEXT NOT NULL,'
            +'PRIMARY KEY (id))');
-    logger.logInfo('Erstelle Tabelle Device.');
     db.run('CREATE TABLE IF NOT EXISTS Device ( id INTEGER NOT NULL,'
            +' name TEXT NOT NULL UNIQUE, ip_address TEXT NOT NULL,'
            +' key_id INTEGER NOT NULL, FOREIGN KEY(key_id) REFERENCES "Key"(id),'
            +' PRIMARY KEY (id) )');
-    logger.logInfo('Tabellen erstellt.');
     closeDB(db);
 }
 
