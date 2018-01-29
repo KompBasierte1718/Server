@@ -31,7 +31,6 @@ function Session(clientIP, vaIP, vaName, readyToPair, codewords) {
 
 
 /* *** Globale Zustandsvariablen *** */
-var ipArr = new Array();
 var session = new Session(null, null, null, null, null);
 
 
@@ -39,12 +38,12 @@ var session = new Session(null, null, null, null, null);
 const port = 51337; // Registriere Port
 const server = net.createServer(); // Neue Server Instanz.
 
-logger.logInfo("Server starten. Port: " + port);
 server.listen(port); // Server Port öffnen.
 server.on('connection', clientConnectedEvent); // Event bei 'connection'
 server.on('error', errorEvent); // Event bei 'error'
 logger.setServer("register"); // Dem Logger den Namen des Servers übermitteln.
 db.initDatabase(); // Datenbank initialisieren
+logger.logInfo("Server gestartet. Port: " + port);
 
 
 /* ************************* SERVER-FUNKTIONEN ****************************** */
@@ -54,6 +53,7 @@ db.initDatabase(); // Datenbank initialisieren
  * Reagiert auf die Anfrage eines Clients.
  */
 function clientConnectedEvent(sock) {
+  logger.setServer("register"); // Diese Variable wurde mittlerweile eventuell überschrieben
 	logger.spacer();
 	logger.logInfo("Neue Verbindung von: " + helper.getIP(sock.remoteAddress));
 
@@ -64,7 +64,7 @@ function clientConnectedEvent(sock) {
 		var request = helper.splitRequest(data);
 
 		if(request.data == null) {
-      sock.write('{"ERROR": "no json"}');
+      //sock.write('{"error": "no json"}');
 			//endFlawedConnection(sock, request.protocol, "Keine Daten, Verbindung wird geschloßen!", "no json");
 		} else {
 			parseJSON(request.data, function(error, json) {
@@ -165,70 +165,94 @@ function checkDevice(json, socket, protocol) {
  */
 function handleClientRequest(json, socket, protocol) {
 	logger.logInfo("Ein PC Client hat sich verbunden!");
+  session.clientIP = helper.getIP(socket.remoteAddress);
 	if(json.password) {
     // Codewörter bekommen
-		session.clientIP = helper.getLastRegisteredIP(ipArr);
 		session.codewords = json.password;
-		session.isReadyToPair = true;
 		logger.logInfo("Client möchte sich mit VA verbinden. Codewörter: " + session.codewords);
     // Neuen Client und Schlüssel in Datenbank sichern.
     db.selectKeyByCodeword(session.codewords, function(rows) {
+      var uniqueDevice = helper.buildDeviceName(json.device, json.deviceID)
       if(rows == undefined) {
         // Key noch nicht vorhanden
         db.insertNewKey(session.codewords, function(lastID) {
-          db.selectDeviceByName(json.device, function(row) {
+          db.selectDeviceByName(uniqueDevice, function(row) {
             if(row == undefined) {
-              db.insertNewDevice(json.device, session.clientIP, lastID);
+              db.insertNewDevice(uniqueDevice, session.clientIP, lastID);
             } else {
-              db.updateDeviceByName(json.device, session.clientIP, lastID);
+              db.updateDeviceByName(uniqueDevice, session.clientIP, lastID);
             }
           });
         });
       } else {
         // Alter Eintrag, Ablaufdatum aktualisieren.
         db.updateKeyByCodeword(session.codewords);
-        db.selectDeviceByName(json.device, function(row) {
+        db.selectDeviceByName(uniqueDevice, function(row) {
           if(row == undefined) {
-            db.insertNewDevice(json.device, session.clientIP, rows.id);
+            db.insertNewDevice(uniqueDevice, session.clientIP, rows.id);
           } else {
-            db.updateDeviceByName(json.device, session.clientIP, rows.id);
+            db.updateDeviceByName(uniqueDevice, session.clientIP, rows.id);
           }
         });
       }
     });
-    endConnection(socket, protocol, 200, '{"answer": "WAITING FOR VA"}');
+    endConnection(socket, protocol, 200, '{"answer": "waiting for va"}');
   } else  if(json.getDevice) {
     // Client möchte die Kopplung mit dem VA bestätigen und brauch den Geräte-
     // Namen
-    db.selectDeviceByName(json.device, function(rows) {
-      db.selectDeviceByKeyID(rows.key_id, function(inner_rows) {
-        for(var i = 0; i < inner_rows; i++) {
-          if(inner_rows[i].name != "pcclient") {
-            // Ein registrierter VA mit selber Key ID
-            session.vaName = inner_rows[i].name;
-            session.vaIP = inner_rows[i].ip_address;
-            logger.logInfo("Client fordert Informationen über Voice Assistent an.");
-            logger.logInfo("VA: " + session.vaName + "(" + session.vaIP + ").");
-            endConnection(socket, protocol, 200, '{"answer": "' + session.vaName + '"}');
-            return;
+    db.selectDeviceByName(json.device, function(row) {
+      if(row == undefined) {
+        endFlawedConnection(socket, protocol, "Dieser PC Client ist nicht registriert.", "not reqistered");
+        return;
+      } else {
+        db.selectDeviceByKeyID(row.key_id, function(rows) {
+          for(var i = 0; i < rows.length; i++) {
+            if(rows[i].name != json.device) {
+              // Ein registrierter VA mit selber Key ID
+              var split = helper.splitDeviceName(rows[i].name)
+              session.vaName = split;
+              session.vaIP = rows[i].ip_address;
+              logger.logInfo("Client fordert Informationen über Voice Assistent an.");
+              logger.logInfo("VA: " + session.vaName + "(" + session.vaIP + ").");
+              endConnection(socket, protocol, 200, '{"answer": "' + session.vaName + '"}');
+              return;
+            }
           }
-        }
-        logger.logInfo("Client möchte sich mit VA verbinden. Doch es gibt bisher keinen registrierten VA.");
-        endConnection(socket, protocol, 200, '{"answer": "WAITING FOR VA"}');
-      });
-    });
-  } else if(json.koppeln == "true" && session.vaName != null) {
+          logger.logInfo("Client möchte sich mit VA verbinden. Doch es gibt bisher keinen registrierten VA.");
+          endConnection(socket, protocol, 200, '{"answer": "waiting for va"}');
+        }); // Ende selectDeviceByKeyID
+      }
+    }); // Ende selectDeviceByName
+  } else if(json.koppeln == "true") {
     // Client möchte sich mit dem bekannten VA koppeln.
-    logger.logInfo("Client möchte Kopplung mit " + session.vaName + "(" + session.vaIP + ").");
-    endConnection(socket, protocol, 200, '{"answer": "COUPLING DONE."}');
-  } else if (json.koppeln == "false" && session.vaName != null) {
+    db.selectDeviceByName(json.device, function(rows) {
+      if(rows == undefined) {
+        endFlawedConnection(socket, protocol, "Dieser PC Client ist nicht registriert.", "not reqistered");
+        return;
+      } else {
+        logger.logInfo("Client möchte Kopplung mit " + session.vaName + "(" + session.vaIP + ").");
+        endConnection(socket, protocol, 200, '{"answer": "coupling done"}');
+      }
+    });
+  } else if (json.koppeln == "false") {
     // Client möchte sich mit dem bekannten VA nicht koppeln.
-    helper.unregisterIP(ipArr, session.clientIP);
     session = new Session(null, null, null, false, null);
     logger.logInfo("Client möchte keine Kopplung. Session wird zurückgesetzt.");
-    db.deleteDeviceByName(json.device);
-    db.deleteKeyByCodeword(session.codewords);
-  	endConnection(socket, protocol, 200, '{"answer": "NO COUPLING. SESSION RESET."}');
+    db.selectDeviceByName(json.device, function(row) {
+      if(row == undefined) {
+        endFlawedConnection(socket, protocol, "Dieser PC Client ist nicht registriert.", "not reqistered");
+        return;
+      } else {
+        // Alle Devices mit der Key ID suchen und entfernen
+        db.selectDeviceByKeyID(row.key_id, function(rows) {
+          for(var i = 0; i < rows.length; i++) {
+            db.deleteDeviceByName(rows[i].name);
+          }
+        });
+      }
+    });
+    setTimeout(function() {db.deleteKeyByCodeword(session.codewords);}, 1000);
+  	endConnection(socket, protocol, 200, '{"answer": "no coupling. session reset."}');
   } else {
     endFlawedConnection(socket, protocol, "Unerwartete Anfrage vom Client.", "unexpected request");
   }
@@ -242,6 +266,7 @@ function handleAlexaRequest(json, socket, protocol) {
 	logger.logInfo(json.device + " hat sich verbunden!");
 	session.vaIP = helper.getIP(socket.remoteAddress);
   session.vaName = json.device;
+  session.vaUniqueName = helper.buildDeviceName(json.device, json.deviceID);
 	if(json.koppeln != undefined) {
 		logger.logInfo(session.vaName + " möchte sich mit einem Client verbinden.");
 		var vaCodewords = json.koppeln.word1 + " " + json.koppeln.word2;
@@ -257,8 +282,8 @@ function handleAlexaRequest(json, socket, protocol) {
               logger.logInfo("Verbindung zwischen Client (" + session.clientIP
                     + ") und VA(" + session.vaIP + ") erstellt.");
               // Neuen VA in Datenbank sichern.
-              if(!db.insertNewDevice(json.device, session.vaIP, keyID)) {
-                db.updateDeviceByName(json.device, session.vaIP, keyID);
+              if(!db.insertNewDevice(session.vaUniqueName, session.vaIP, keyID)) {
+                db.updateDeviceByName(session.vaUniqueName, session.vaIP, keyID);
               }
               endAlexaConnection(socket, "Mit Client gekoppelt.");
               return;

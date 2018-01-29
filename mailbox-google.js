@@ -40,11 +40,11 @@ var session = new Session(null, null, null, false, null);
 const port = 61337; // Registriere Port
 const server = net.createServer(); // Neue Server Instanz.
 
-logger.logInfo("Server starten. Port: " + port);
 server.listen(port); // Server Port öffnen.
 server.on('connection', clientConnectedEvent); // Event bei 'connection'
 server.on('error', errorEvent); // Event bei 'error'
-logger.setServer("Google"); // Dem Logger den Namen des Servers übermitteln.
+logger.setServer("google"); // Dem Logger den Namen des Servers übermitteln.
+logger.logInfo("Server gestartet. Port: " + port);
 db.initDatabase(); // Datenbank initialisieren
 
 
@@ -55,6 +55,7 @@ db.initDatabase(); // Datenbank initialisieren
  * Reagiert auf die Anfrage eines Clients.
  */
 function clientConnectedEvent(sock) {
+  logger.setServer("google"); // Diese Variable wurde mittlerweile eventuell überschrieben
 	logger.spacer();
 	logger.logInfo("Neue Verbindung von: " + helper.getIP(sock.remoteAddress));
 
@@ -191,7 +192,7 @@ function handleGoogleRequest(json, socket, protocol) {
           endGoogleConnection(socket, "Falsche Codewörter, es findet keine Kopplung statt.");
         });
       } else {
-        endGoogleConnection(socket, "Client möchte bisher keine Kopplung herstellen.");
+        endGoogleConnection(socket, "Client möchte bisher keine Kopplung herstellen oder Codewords sind falsch.");
       }
     });
 
@@ -199,13 +200,29 @@ function handleGoogleRequest(json, socket, protocol) {
 		session.vaIP = null;
     session.vaName = null;
 		logger.logInfo("Verbindung zwischen Client (" + getLastRegisteredIP() + ") und VA(" + session.vaIP + ") gelöscht.");
-    db.deleteDeviceByName(json.device);
+    db.deleteDeviceByName(session.vaName);
     endGoogleConnection(socket, "Kopplung mit Client aufgehoben.");
-	} else	if(json.result.metadata.intentName == "Programm starten") {
-  		instruction = json.result.parameters.program;
-  		logger.logInfo("Neuer Befehl: " + instruction);
-      fh.writeFile(instruction);
-  		endGoogleConnection(socket, "Gebe den Befehl weiter.");
+	} else if(json.result.metadata.intentName == "Programm starten") {
+      db.selectDeviceByName(session.vaName, function(row) {
+        if(row != undefined) {
+          // Dieses Google Home Gerät ist bereits gekoppelt
+          db.selectDeviceByKeyID(row.key_id, function(rows) {
+            for(var i = 0; i < rows.length; i++) {
+              if(rows[i].name.match(/.*pcclient.*/i)) {
+                // Es gibt einen PC Client mit der selben Key ID, also wurde
+                // Die Kopplung bereits bestätigt.
+                instruction = json.result.parameters.program;
+                logger.logInfo("Neuer Befehl: " + instruction);
+                fh.writeFile(instruction);
+                endGoogleConnection(socket, "Gebe den Befehl weiter.");
+                return;
+              }
+            }
+          });
+          return;
+        }
+        endGoogleConnection(socket, "Dieser Voice Assistent ist bisher nicht gekoppelt.");
+      });
   } else {
     session.vaIP = null;
     session.vaName = null;

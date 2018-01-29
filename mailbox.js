@@ -28,9 +28,9 @@ server.listen(port); // Server Port öffnen.
 server.on('error', errorEvent); // Event bei 'error'
 server.on('connection', clientConnectedEvent); // Event bei 'connection'
 logger.setServer("commands"); // Dem Logger den Namen des Servers übermitteln.
-db.initDatabase(); // Datenbank initialisieren
 
 logger.logInfo("Server gestartet. Port: " + port);
+db.initDatabase(); // Datenbank initialisieren
 
 
 /* ************************* SERVER-FUNKTIONEN ****************************** */
@@ -40,6 +40,7 @@ logger.logInfo("Server gestartet. Port: " + port);
  * Reagiert auf die Anfrage eines Clients.
  */
 function clientConnectedEvent(sock) {
+	logger.setServer("commands"); // Diese Variable wurde mittlerweile eventuell überschrieben
 	logger.spacer();
 	logger.logInfo("Neue Verbindung von: " + helper.getIP(sock.remoteAddress));
 
@@ -50,7 +51,7 @@ function clientConnectedEvent(sock) {
 		var request = helper.splitRequest(data);
 
 		if(request.data == null) {
-			endFlawedConnection(sock, request.protocol, "Keine Daten, Verbindung wird geschloßen!", "no json");
+			//endFlawedConnection(sock, request.protocol, "Keine Daten, Verbindung wird geschloßen!", "no json");
 		} else {
 			parseJSON(request.data, function(error, json) {
 				if(error) {
@@ -152,20 +153,27 @@ function checkDevice(json, socket, protocol) {
 function handleClientRequest(json, socket, protocol) {
 	logger.logInfo("Ein PC Client hat sich verbunden!");
 	if(json.instructions) {
+		db.selectDeviceByName(json.device, function(row) {
+			if(row == undefined) {
+				endFlawedConnection(socket, protocol, "Dieser PC Client ist nicht registriert.", "not reqistered");
+			} else {
 				// Hier werden Befehle an den Anfrageneden Client gesendet!
 				var instruction = fh.readFile();
+				var task = "Starte";
 				if(instruction.length > 1) {
 					// Der Befehl wird abgeschickt und deswegen gelöscht.
 					fh.writeFile("");
 					logger.logInfo("Sende neuen Befehl '" + instruction + "' an PC Client");
-					endConnection(socket, protocol, 200, '{"answer": "NEW COMMAND", "program": "' + instruction + '"}');
+					endConnection(socket, protocol, 200, '{"answer": "new commands", "program": "' + instruction + '", "task": "' + task + '"}');
 				} else {
 					logger.logInfo("Keine neuen Befehle vorhanden!");
-					endConnection(socket, protocol, 400, '{"answer": "NO COMMANDS"}');
+					endConnection(socket, protocol, 400, '{"answer": "no commands"}');
 				}
-		} else {
-			endFlawedConnection(socket, protocol, "Unerwartete Anfrage vom Client.", "unexpected request");
-		}
+			}
+		});
+	} else {
+		endFlawedConnection(socket, protocol, "Unerwartete Anfrage vom Client.", "unexpected request");
+	}
 }
 
 
@@ -175,9 +183,24 @@ function handleClientRequest(json, socket, protocol) {
 function handleAlexaRequest(json, socket, protocol) {
 	logger.logInfo("Ein Alexa Gerät hat sich verbunden!");
 	if(json.instruction) {
-			instruction = json.instruction
-			logger.logInfo("Neuer Befehl: " + instruction);
-			fh.writeFile(instruction);
-			endAlexaConnection(socket, "Gebe den Befehl weiter.");
+		db.selectDeviceByName(helper.buildDeviceName(json.device, json.deviceID), function(row) {
+			if(row != undefined) {
+				// Dieses Alexa Gerät ist bereits gekoppelt
+				db.selectDeviceByKeyID(row.key_id, function(rows) {
+					for(var i = 0; i < rows.length; i++) {
+						if(rows[i].name.match(/.*pcclient.*/i)) {
+							// Es gibt einen PC Client mit der selben Key ID, also wurde
+							// Die Kopplung bereits bestätigt.
+							logger.logInfo("Neuer Befehl: " + json.instruction);
+							fh.writeFile(json.instruction);
+							endAlexaConnection(socket, "Gebe den Befehl weiter.");
+							return;
+						}
+					}
+				});
+				return;
+			}
+			endAlexaConnection(socket, "Dieser Voice Assistent ist bisher nicht gekoppelt.");
+		});
 	}
 }
