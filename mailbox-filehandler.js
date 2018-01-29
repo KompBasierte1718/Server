@@ -21,7 +21,7 @@ module.exports = {
 }
 
 /* writeFile
- * Loggt Information über Ereignisse in einer Datei.
+ * Schreibt erhaltene Befehle in der Textdatei "instruction.temp".
  */
 function writeFile(data) {
   fs.writeFile(fileName, data, function(err) {
@@ -29,9 +29,9 @@ function writeFile(data) {
 	});
 }
 
+/*readFile
+ * Liest die Textdatei "instruction.temp".
+ */
 function readFile() {
-  fs.read(fileName, function(data, err) {
-    if(err) throw err;
-    return data;
-  });
+  return fs.readFileSync(fileName);
 }
