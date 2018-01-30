@@ -152,22 +152,38 @@ function checkDevice(json, socket, protocol) {
  */
 function handleClientRequest(json, socket, protocol) {
 	logger.logInfo("Ein PC Client hat sich verbunden!");
+	var uniqueDevice = helper.buildDeviceName(json.device, json.deviceID);
 	if(json.instructions) {
-		db.selectDeviceByName(json.device, function(row) {
+		db.selectDeviceByName(uniqueDevice, function(row) {
 			if(row == undefined) {
 				endFlawedConnection(socket, protocol, "Dieser PC Client ist nicht registriert.", "not reqistered");
 			} else {
 				// Hier werden Befehle an den Anfrageneden Client gesendet!
-				var instruction = fh.readFile();
-				var task = "Starte";
-				if(instruction.length > 1) {
-					// Der Befehl wird abgeschickt und deswegen gelöscht.
-					fh.writeFile("");
-					logger.logInfo("Sende neuen Befehl '" + instruction + "' an PC Client");
-					endConnection(socket, protocol, 200, '{"answer": "new commands", "program": "' + instruction + '", "task": "' + task + '"}');
+				var dataFromFile = fh.readFile();
+				if(dataFromFile.length < 1) {
+					endFlawedConnection(socket, protocol, "Keine neuen Befehle vorhanden!", "no commands");
 				} else {
-					logger.logInfo("Keine neuen Befehle vorhanden!");
-					endConnection(socket, protocol, 400, '{"answer": "no commands"}');
+					dataFromFile = helper.splitInstruction(dataFromFile);
+					var deviceName = dataFromFile[0];
+					var instruction = dataFromFile[1];
+					var task = dataFromFile[2];
+					if(task == "undefined") {
+						task = "Starte";
+					}
+					db.selectDeviceByKeyID(row.key_id, function(rows) {
+						for(var i = 0; i < rows.length; i++) {
+							if(rows[i].name == deviceName) {
+								if(instruction) {
+									// Der Befehl wird abgeschickt und deswegen gelöscht.
+									fh.writeFile("");
+									logger.logInfo("Sende neuen Befehl '" + instruction + "' an PC Client");
+									endConnection(socket, protocol, 200, '{"answer": "new commands", "program": "' + instruction + '", "task": "' + task + '"}');
+									return;
+								}
+							}
+						}
+						endFlawedConnection(socket, protocol, "Bisher kein VA registriert.", "va has no commands");
+					});
 				}
 			}
 		});
@@ -183,7 +199,8 @@ function handleClientRequest(json, socket, protocol) {
 function handleAlexaRequest(json, socket, protocol) {
 	logger.logInfo("Ein Alexa Gerät hat sich verbunden!");
 	if(json.instruction) {
-		db.selectDeviceByName(helper.buildDeviceName(json.device, json.deviceID), function(row) {
+		var uniqueDevice = helper.buildDeviceName(json.device, json.deviceID);
+		db.selectDeviceByName(uniqueDevice, function(row) {
 			if(row != undefined) {
 				// Dieses Alexa Gerät ist bereits gekoppelt
 				db.selectDeviceByKeyID(row.key_id, function(rows) {
@@ -192,7 +209,7 @@ function handleAlexaRequest(json, socket, protocol) {
 							// Es gibt einen PC Client mit der selben Key ID, also wurde
 							// Die Kopplung bereits bestätigt.
 							logger.logInfo("Neuer Befehl: " + json.instruction);
-							fh.writeFile(json.instruction);
+							fh.writeFile(uniqueDevice + ";" + json.instruction + "|" + json.task);
 							endAlexaConnection(socket, "Gebe den Befehl weiter.");
 							return;
 						}

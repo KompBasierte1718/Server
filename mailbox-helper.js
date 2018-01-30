@@ -23,7 +23,8 @@ module.exports = {
   unregisterIP: unregisterIP,
   getLastRegisteredIP: getLastRegisteredIP,
   buildDeviceName: buildDeviceName,
-  splitDeviceName: splitDeviceName
+  splitDeviceName: splitDeviceName,
+  splitInstruction: splitInstruction
 }
 
 
@@ -262,7 +263,28 @@ function splitDeviceName(name) {
 
   var deviceArr = new Array();
   deviceArr.push(name.substring(0, underscore)); // Name
-  deviceArr.push(name.substring(underscore)); // ID
+  deviceArr.push(name.substring(underscore+1)); // ID
 
   return deviceArr;
 }
+
+function splitInstruction(data) {
+   if(data == null || data == undefined) {
+     return null;
+   }
+   var semicolon = data.indexOf(";");
+   if(semicolon == -1) {
+     return null;
+   }
+   var stripe= data.indexOf("|");
+   if(stripe == -1) {
+     return null;
+   }
+
+   var deviceArr = new Array();
+   deviceArr.push(data.toString().substring(0, semicolon)); // Device
+   deviceArr.push(data.toString().substring(semicolon+1, stripe)); // Instruction
+   deviceArr.push(data.toString().substring(stripe+1)); // Task
+
+   return deviceArr;
+ }

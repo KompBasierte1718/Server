@@ -172,7 +172,7 @@ function handleClientRequest(json, socket, protocol) {
 		logger.logInfo("Client möchte sich mit VA verbinden. Codewörter: " + session.codewords);
     // Neuen Client und Schlüssel in Datenbank sichern.
     db.selectKeyByCodeword(session.codewords, function(rows) {
-      var uniqueDevice = helper.buildDeviceName(json.device, json.deviceID)
+      var uniqueDevice = helper.buildDeviceName(json.device, json.deviceID);
       if(rows == undefined) {
         // Key noch nicht vorhanden
         db.insertNewKey(session.codewords, function(lastID) {
@@ -200,22 +200,34 @@ function handleClientRequest(json, socket, protocol) {
   } else  if(json.getDevice) {
     // Client möchte die Kopplung mit dem VA bestätigen und brauch den Geräte-
     // Namen
-    db.selectDeviceByName(json.device, function(row) {
+    var uniqueDevice = helper.buildDeviceName(json.device, json.deviceID);
+    db.selectDeviceByName(uniqueDevice, function(row) {
       if(row == undefined) {
         endFlawedConnection(socket, protocol, "Dieser PC Client ist nicht registriert.", "not reqistered");
         return;
       } else {
         db.selectDeviceByKeyID(row.key_id, function(rows) {
           for(var i = 0; i < rows.length; i++) {
-            if(rows[i].name != json.device) {
+            if(!rows[i].name.match(/.*pcclient.*/i)) {
               // Ein registrierter VA mit selber Key ID
-              var split = helper.splitDeviceName(rows[i].name)
-              session.vaName = split;
-              session.vaIP = rows[i].ip_address;
-              logger.logInfo("Client fordert Informationen über Voice Assistent an.");
-              logger.logInfo("VA: " + session.vaName + "(" + session.vaIP + ").");
-              endConnection(socket, protocol, 200, '{"answer": "' + session.vaName + '"}');
-              return;
+              var splitedDeviceName = helper.splitDeviceName(rows[i].name);
+              if(rows[i].name == "Google Home") {
+                session.vaName = "Google Home";
+                session.vaIP = rows[i].ip_address;
+                logger.logInfo("Client fordert Informationen über Voice Assistent an.");
+                logger.logInfo("VA: " + session.vaName + "(" + session.vaIP + ").");
+                endConnection(socket, protocol, 200, '{"answer": "' + session.vaName + '"}');
+                return;
+              } else if(splitedDeviceName == null) {
+                endFlawedConnection(socket, protocol, "Fehler beim auslesen der Datenbank", "server db error");
+              } else {
+                session.vaName = splitedDeviceName[0];
+                session.vaIP = rows[i].ip_address;
+                logger.logInfo("Client fordert Informationen über Voice Assistent an.");
+                logger.logInfo("VA: " + session.vaName + "(" + session.vaIP + ").");
+                endConnection(socket, protocol, 200, '{"answer": "' + session.vaName + '"}');
+                return;
+              }
             }
           }
           logger.logInfo("Client möchte sich mit VA verbinden. Doch es gibt bisher keinen registrierten VA.");
@@ -224,8 +236,9 @@ function handleClientRequest(json, socket, protocol) {
       }
     }); // Ende selectDeviceByName
   } else if(json.koppeln == "true") {
+    var uniqueDevice = helper.buildDeviceName(json.device, json.deviceID);
     // Client möchte sich mit dem bekannten VA koppeln.
-    db.selectDeviceByName(json.device, function(rows) {
+    db.selectDeviceByName(uniqueDevice, function(rows) {
       if(rows == undefined) {
         endFlawedConnection(socket, protocol, "Dieser PC Client ist nicht registriert.", "not reqistered");
         return;
@@ -236,9 +249,10 @@ function handleClientRequest(json, socket, protocol) {
     });
   } else if (json.koppeln == "false") {
     // Client möchte sich mit dem bekannten VA nicht koppeln.
+    var uniqueDevice = helper.buildDeviceName(json.device, json.deviceID);
     session = new Session(null, null, null, false, null);
     logger.logInfo("Client möchte keine Kopplung. Session wird zurückgesetzt.");
-    db.selectDeviceByName(json.device, function(row) {
+    db.selectDeviceByName(uniqueDevice, function(row) {
       if(row == undefined) {
         endFlawedConnection(socket, protocol, "Dieser PC Client ist nicht registriert.", "not reqistered");
         return;
@@ -277,7 +291,7 @@ function handleAlexaRequest(json, socket, protocol) {
         var keyID = rows.id;
         db.selectDeviceByKeyID(keyID, function(rows2) {
           for(var i = 0; i < rows2.length; i++) {
-            if(rows2[i].name == "pcclient") {
+            if(rows2[i].name.match(/^pcclient.*$/)) {
               // PClient und Key in der DB
               logger.logInfo("Verbindung zwischen Client (" + session.clientIP
                     + ") und VA(" + session.vaIP + ") erstellt.");

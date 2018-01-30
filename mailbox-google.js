@@ -178,7 +178,7 @@ function handleGoogleRequest(json, socket, protocol) {
         var keyID = rows.id;
         db.selectDeviceByKeyID(keyID, function(rows2) {
           for(var i = 0; i < rows2.length; i++) {
-            if(rows2[i].name == "pcclient") {
+            if(rows2[i].name.match(/^pcclient.*$/)) {
               // PClient und Key in der DB
               logger.logInfo("Verbindung zwischen Client (" + rows2[i].ip_address + ") und VA(" + session.vaIP + ") erstellt.");
               // Neuen VA in Datenbank sichern.
@@ -208,12 +208,12 @@ function handleGoogleRequest(json, socket, protocol) {
           // Dieses Google Home Gerät ist bereits gekoppelt
           db.selectDeviceByKeyID(row.key_id, function(rows) {
             for(var i = 0; i < rows.length; i++) {
-              if(rows[i].name.match(/.*pcclient.*/i)) {
+              if(rows[i].name.match(/^pcclient.*$/)) {
                 // Es gibt einen PC Client mit der selben Key ID, also wurde
                 // Die Kopplung bereits bestätigt.
                 instruction = json.result.parameters.program;
                 logger.logInfo("Neuer Befehl: " + instruction);
-                fh.writeFile(instruction);
+                fh.writeFile("Google Home" + ";" + instruction + "|" + json.task );
                 endGoogleConnection(socket, "Gebe den Befehl weiter.");
                 return;
               }
