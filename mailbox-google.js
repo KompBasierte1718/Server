@@ -202,27 +202,49 @@ function handleGoogleRequest(json, socket, protocol) {
 		logger.logInfo("Verbindung zwischen Client (" + getLastRegisteredIP() + ") und VA(" + session.vaIP + ") gelöscht.");
     db.deleteDeviceByName(session.vaName);
     endGoogleConnection(socket, "Kopplung mit Client aufgehoben.");
-	} else if(json.result.metadata.intentName == "Programm starten") {
-      db.selectDeviceByName(session.vaName, function(row) {
-        if(row != undefined) {
-          // Dieses Google Home Gerät ist bereits gekoppelt
-          db.selectDeviceByKeyID(row.key_id, function(rows) {
-            for(var i = 0; i < rows.length; i++) {
-              if(rows[i].name.match(/^pcclient.*$/)) {
-                // Es gibt einen PC Client mit der selben Key ID, also wurde
-                // Die Kopplung bereits bestätigt.
-                instruction = json.result.parameters.program;
-                logger.logInfo("Neuer Befehl: " + instruction);
-                fh.writeFile("Google Home" + ";" + instruction + "|" + json.task );
-                endGoogleConnection(socket, "Gebe den Befehl weiter.");
-                return;
-              }
+	} else if("Programm starten" == json.result.metadata.intentName) {
+    db.selectDeviceByName(session.vaName, function(row) {
+      if(row != undefined) {
+        // Dieses Google Home Gerät ist bereits gekoppelt
+        db.selectDeviceByKeyID(row.key_id, function(rows) {
+          for(var i = 0; i < rows.length; i++) {
+            if(rows[i].name.match(/^pcclient.*$/)) {
+              // Es gibt einen PC Client mit der selben Key ID, also wurde
+              // Die Kopplung bereits bestätigt.
+              var instruction = json.result.parameters.program;
+              logger.logInfo("Neuer Befehl: " + instruction);
+              fh.writeFile("Google Home" + ";" + instruction + "|" + "Starten" );
+              endGoogleConnection(socket, "Gebe den Befehl weiter.");
+              return;
             }
-          });
-          return;
-        }
-        endGoogleConnection(socket, "Dieser Voice Assistent ist bisher nicht gekoppelt.");
-      });
+          }
+        });
+        return;
+      }
+      endGoogleConnection(socket, "Dieser Voice Assistent ist bisher nicht gekoppelt.");
+    });
+  } else if("Programm Befehl" == json.result.metadata.intentName) {
+    db.selectDeviceByName(session.vaName, function(row) {
+      if(row != undefined) {
+        // Dieses Google Home Gerät ist bereits gekoppelt
+        db.selectDeviceByKeyID(row.key_id, function(rows) {
+          for(var i = 0; i < rows.length; i++) {
+            if(rows[i].name.match(/^pcclient.*$/)) {
+              // Es gibt einen PC Client mit der selben Key ID, also wurde
+              // Die Kopplung bereits bestätigt.
+              var instruction = json.result.parameters.program;
+              var task = json.result.parameters.task;
+              logger.logInfo("Neuer Befehl: " + instruction);
+              fh.writeFile("Google Home" + ";" + instruction + "|" + "Starten" );
+              endGoogleConnection(socket, "Gebe den Befehl weiter.");
+              return;
+            }
+          }
+        });
+        return;
+      }
+      endGoogleConnection(socket, "Dieser Voice Assistent ist bisher nicht gekoppelt.");
+    });
   } else {
     session.vaIP = null;
     session.vaName = null;
