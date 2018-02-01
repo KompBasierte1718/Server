@@ -11,8 +11,10 @@
  // Referenzen einbinden.
 const net = require('net');
 const parseJSON = require('json-parse-async');
-const logger = require('./logger');
+const logger = require('./mailbox-logger');
 const helper = require('./mailbox-helper');
+const db = require('./mailbox-db');
+const fh = require('./mailbox-filehandler');
 
 
 /* *** Globale Variablen *** */
@@ -23,11 +25,12 @@ const port = 41337; // Registriere Port
 const server = net.createServer(); // Neue Server Instanz.
 
 server.listen(port); // Server Port öffnen.
+server.on('error', errorEvent); // Event bei 'error'
 server.on('connection', clientConnectedEvent); // Event bei 'connection'
 logger.setServer("commands"); // Dem Logger den Namen des Servers übermitteln.
 
-console.log("Befehls-Server gestartet. Port: " + port); //DEBUG
-logger.logInfo("Befehls-Server gestartet. Port: " + port);
+logger.logInfo("Server gestartet. Port: " + port);
+db.initDatabase(); // Datenbank initialisieren
 
 
 /* ************************* SERVER-FUNKTIONEN ****************************** */
@@ -37,28 +40,25 @@ logger.logInfo("Befehls-Server gestartet. Port: " + port);
  * Reagiert auf die Anfrage eines Clients.
  */
 function clientConnectedEvent(sock) {
-	console.log("\n####################################################"); //DEBUG
-	console.log("Neue Verbindung von: " + helper.getIP(sock.remoteAddress)); //DEBUG
+	logger.setServer("commands"); // Diese Variable wurde mittlerweile eventuell überschrieben
 	logger.spacer();
 	logger.logInfo("Neue Verbindung von: " + helper.getIP(sock.remoteAddress));
 
 	sock.on('data', function(data) {
-		console.log("Daten vom Client erhalten."); //DEBUG
 		logger.logInfo("Daten vom Client erhalten.");
 
 		// Request validieren
 		var request = helper.splitRequest(data);
 
 		if(request.data == null) {
-			endFlawedConnection(sock, request.protocol, "Keine Daten, Verbindung wird geschloßen!", "no json");
+			//endFlawedConnection(sock, request.protocol, "Keine Daten, Verbindung wird geschloßen!", "no json");
 		} else {
-			parseJSON(request.data, function(err, content) {
-				if(err) {
+			parseJSON(request.data, function(error, json) {
+				if(error) {
 					endFlawedConnection(sock, request.protocol,
 									"JSON konnte nicht geparst werden. Inhalt: " + data
 									+ "Fehler: " + error, "json not parsable");
 				} else {
-					console.log("JSON-Datei erforlgreich geparst."); //DEBUG
 					logger.logInfo("JSON-Datei erforlgreich geparst.");
 					checkDevice(json, sock, request.protocol);
 				}
@@ -68,19 +68,38 @@ function clientConnectedEvent(sock) {
 
 	// Client möchte die Verbindung beenden.
 	sock.on('end', function() {
-		console.log("Client bestätigt das Ende der Verbindung."); // DEBUG
 		logger.logInfo("Client bestätigt das Ende der Verbindung.");
 		sock.end();
-		logger.spacer();
-		console.log("####################################################\n"); //DEBUG
 	}); // ENDE socket 'end'
+
+	// Fehler bei der Verbindung
+	sock.on('error', function() {
+	  logger.logError("connection", "Fehlerevent vom Socket.");
+	});
+
+	// Schließen der Verbindung nach Fehler
+	sock.on('close', function() {
+		logger.logInfo("Verbindung wird wegen 'close' Event geschloßen.");
+		sock.end();
+		logger.spacer();
+	});
 }
+
+
+/* errorEvent
+ * Behandelt auftretende Fehler.
+ */
+function errorEvent(error) {
+  logger.logError("connection", "Ein Fehler ist aufgetreten: " + error);
+  server.close();
+  throw error;
+}
+
 
 /* endConnection
  * Beendet die Verbindung zu einem Gerät.
  */
-function endConnection(socket, isHttp, httpHeader, data) {
-	console.log("Verbindung wird geschloßen!"); //DEBUG
+function endConnection(socket, protocol, status, message) {
 	logger.logInfo("Verbindung wird geschloßen!");
 	if(protocol == "http"){
 		socket.end(helper.headers(status) + message);
@@ -95,20 +114,8 @@ function endConnection(socket, isHttp, httpHeader, data) {
  * entstandenen Fehler im Log.
  */
 function endFlawedConnection(socket, protocol, errLog, errJSON) {
-	console.error(errLog); //DEBUG
 	logger.logError('connection', errLog);
 	endConnection(socket, protocol, 400, '{"error": "' + errJSON + '"}');
-}
-
-
-/* endGoogleConnection
- * Beendet eine Google Verbindung. Hierbei muss die zurück gesendete JSON-Datei
- * ein bestimmtes Format vorweisen.
- */
-function endGoogleConnection(socket, message) {
-	console.log(message); //DEBUG
-	logger.logInfo(message);
-	endConnection(socket, "http", 200, '{"speech": "' + message + '","displayText": "' + message + '"}');
 }
 
 
@@ -116,7 +123,6 @@ function endGoogleConnection(socket, message) {
  * Beendet eine Alexa verbindung.
  */
 function endAlexaConnection(socket, message) {
-	console.log(message); //DEBUG
 	logger.logInfo(message);
 	endConnection(socket, "http", 200, '{"answer": "' + message + '"}');
 }
@@ -126,7 +132,6 @@ function endAlexaConnection(socket, message) {
  * Überprüft welches Gerät die Anfrage gesendet hat.
  */
 function checkDevice(json, socket, protocol) {
-	console.log("Prüfe welches Gerät verwendet wird."); //DEBUG
 	logger.logInfo("Prüfe welches Gerät verwendet wird.");
 
 	switch(json.device) {
@@ -137,12 +142,7 @@ function checkDevice(json, socket, protocol) {
 			handleAlexaRequest(json, socket, protocol);
 			break;
 		default:
-			if(json.result != undefined) {
-				// Google bietet keine Möglichkeit die JSON-Datei anzupassen.
-				handleGoogleRequest(json, socket, protocol);
-			} else {
-				endFlawedConnection(socket, protocol, "Unbekanntes Gerät.", "unknown device");
-			}
+			endFlawedConnection(socket, protocol, "Unbekanntes Gerät.", "unknown device");
 	}
 }
 
@@ -152,51 +152,72 @@ function checkDevice(json, socket, protocol) {
  */
 function handleClientRequest(json, socket, protocol) {
 	logger.logInfo("Ein PC Client hat sich verbunden!");
-	console.log("Gerät: PC Client"); //DEBUG
-	if(content.instructions) {
+	var uniqueDevice = helper.buildDeviceName(json.device, json.deviceID);
+	if(json.instructions) {
+		db.selectDeviceByName(uniqueDevice, function(row) {
+			if(row == undefined) {
+				endFlawedConnection(socket, protocol, "Dieser PC Client ist nicht registriert.", "not reqistered");
+			} else {
 				// Hier werden Befehle an den Anfrageneden Client gesendet!
-				if(instruction != null) {
-					// Der Befehl wird abgeschickt und deswegen gelöscht.
-					var tempInstruction = instruction;
-					instruction = null;
-					logger.logInfo("Sende neuen Befehl '" + tempInstruction + "' an PC Client");
-					console.log("Sende neuen Befehl '" + tempInstruction + "' an PC Client"); //DEBUG
-					endConnection(socket, protocol, 200, '{"answer": "NEW COMMAND", "program": "' + tempInstruction + '"}');
+				var dataFromFile = fh.readFile();
+				if(dataFromFile.length < 1) {
+					endFlawedConnection(socket, protocol, "Keine neuen Befehle vorhanden!", "no commands");
 				} else {
-					logger.logInfo("Keine neuen Befehle vorhanden!");
-					console.log("Keine neuen Befehle vorhanden!"); //DEBUG
-					endConnection(socket, protocol, 400, '{"answer": "NO COMMANDS"}');
+					dataFromFile = helper.splitInstruction(dataFromFile);
+					var deviceName = dataFromFile[0];
+					var instruction = dataFromFile[1];
+					var task = dataFromFile[2];
+					if(task == "undefined") {
+						task = "Starte";
+					}
+					db.selectDeviceByKeyID(row.key_id, function(rows) {
+						for(var i = 0; i < rows.length; i++) {
+							if(rows[i].name == deviceName) {
+								if(instruction) {
+									// Der Befehl wird abgeschickt und deswegen gelöscht.
+									fh.writeFile("");
+									logger.logInfo("Sende neuen Befehl '" + instruction + "' an PC Client");
+									endConnection(socket, protocol, 200, '{"answer": "new commands", "program": "' + instruction + '", "task": "' + task + '"}');
+									return;
+								}
+							}
+						}
+						endFlawedConnection(socket, protocol, "Bisher kein VA registriert.", "va has no commands");
+					});
 				}
-		} else {
-			endFlawedConnection(socket, protocol, "Unerwartete Anfrage vom Client.", "unexpected request");
-		}
-}
-
-
-/* handleGoogleRequest
- * Behandelt Anfragen des Google VAs.
- */
-function handleGoogleRequest(json, socket, protocol) {
-	logger.logInfo("Ein Google Gerät hat sich verbunden!");
-	console.log("Gerät: Google Home"); //DEBUG
-	if(content.result.metadata.intentName == "Programm starten") {
-		instruction = content.result.parameters.program;
-		logger.logInfo("Neuer Befehl: " + instruction);
-		console.log("Neuer Befehl: " + instruction); //DEBUG
-		endGoogleConnection(socket, "Gebe den Befehl weiter.");
+			}
+		});
+	} else {
+		endFlawedConnection(socket, protocol, "Unerwartete Anfrage vom Client.", "unexpected request");
 	}
 }
+
 
 /* handleAlexaRequest
  * Behandelt Anfragen des Alexa VAs.
  */
 function handleAlexaRequest(json, socket, protocol) {
 	logger.logInfo("Ein Alexa Gerät hat sich verbunden!");
-	console.log("Gerät: Alexa"); //DEBUG
-	if(content.instruction) {
-			instruction = content.instruction
-			logger.logInfo("Neuer Befehl: " + instruction);
-			console.log("Neuer Befehl: " + instruction); //DEBUG
-			endAlexaConnection(socket, "Gebe den Befehl weiter.");
+	if(json.instruction) {
+		var uniqueDevice = helper.buildDeviceName(json.device, json.deviceID);
+		db.selectDeviceByName(uniqueDevice, function(row) {
+			if(row != undefined) {
+				// Dieses Alexa Gerät ist bereits gekoppelt
+				db.selectDeviceByKeyID(row.key_id, function(rows) {
+					for(var i = 0; i < rows.length; i++) {
+						if(rows[i].name.match(/.*pcclient.*/i)) {
+							// Es gibt einen PC Client mit der selben Key ID, also wurde
+							// Die Kopplung bereits bestätigt.
+							logger.logInfo("Neuer Befehl: " + json.instruction);
+							fh.writeFile(uniqueDevice + ";" + json.instruction + "|" + json.task);
+							endAlexaConnection(socket, "Gebe den Befehl weiter.");
+							return;
+						}
+					}
+				});
+				return;
+			}
+			endAlexaConnection(socket, "Dieser Voice Assistent ist bisher nicht gekoppelt.");
+		});
 	}
 }

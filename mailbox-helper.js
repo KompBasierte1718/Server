@@ -11,7 +11,7 @@
  */
 
 // Referenzen einbinden.
-const logger = require('./logger');
+const logger = require('./mailbox-logger');
 
 
 // Zu exportierende Objekte definieren.
@@ -21,7 +21,10 @@ module.exports = {
   getIP: getIP,
   registerIP: registerIP,
   unregisterIP: unregisterIP,
-  getLastRegisteredIP: getLastRegisteredIP
+  getLastRegisteredIP: getLastRegisteredIP,
+  buildDeviceName: buildDeviceName,
+  splitDeviceName: splitDeviceName,
+  splitInstruction: splitInstruction
 }
 
 
@@ -71,12 +74,10 @@ function getJSONFromBody(data) {
 	if(firstCurlyBracket == -1 || lastCurlyBracket == -1) {
 		// Keine (valide) gefunden JSON-Datei.
     logger.logInfo("Der Request beinhaltet keine JSON-Datei.");
-		console.log("Der Request beinhaltet keine JSON-Datei."); //DEBUG
 		return null;
 	}
 
   logger.logInfo("Der Request beinhaltet eine JSON-Datei.");
-  console.log("Der Request beinhaltet eine JSON-Datei."); //DEBUG
 	// Alles vor und nach den geschweiften Klammern entfernen.
 	return data.toString().substring(firstCurlyBracket, lastCurlyBracket + 1);
 }
@@ -129,19 +130,14 @@ function checkUsedProtocol(header) {
   if(header == null) {
     // Unbekanntes Protokoll, vermutlich TCP-Request
     logger.logInfo("Das verwendete Protokoll des Request ist Unbekannt (TCP).");
-    console.log("TCP-Request:"); //DEBUG
     return "tcp";
   } else if(header.toString().match(/https/i)) {
     // HTTPs Header
     logger.logInfo("Das verwendete Protokoll des Request ist HTTPS.");
-    console.log("HTTPS-Request:"); //DEBUG
-    console.log("\n"+header+"\n"); //DEBUG
     return "https";
   } else if(header.toString().match(/http/i)) {
     // HTTP Header
     logger.logInfo("Das verwendete Protokoll des Request ist HTTP.");
-    console.log("HTTP-Request:"); //DEBUG
-    console.log("\n"+header+"\n"); //DEBUG
     return "http";
   }
 }
@@ -187,7 +183,6 @@ function isKnownIP(ipArr, ip) {
 	for(var i = 0; i < ipArr.length; i++) {
 		if(ipArr[i] == getIP(ip)) {
       logger.logInfo("IP " + ipArr[i] + " ist bereits bekannt.");
-      console.log("IP " + ipArr[i] + " ist bereits bekannt."); //DEBUG
 			return true;
 		}
 	}
@@ -208,7 +203,6 @@ function registerIP(ipArr, ip) {
     // Bisher unbekannte IP
     ipArr.push(getIP(ip));
     logger.logInfo("IP " + getIP(ip) + " registriert.");
-    console.log("IP " + getIP(ip) + " registriert."); //DEBUG
     return true;
   }
 
@@ -228,7 +222,6 @@ function unregisterIP(ipArr, ip) {
 			tempArr.push(ipArr[i]);
 		} else {
       logger.logInfo("IP " + getIP(ip) + " deregistriert.");
-      console.log("IP " + getIP(ip) + " deregistriert."); //DEBUG
     }
 	}
 	ipArr = tempArr;
@@ -243,3 +236,55 @@ function unregisterIP(ipArr, ip) {
 function getLastRegisteredIP(ipArr) {
 	return ipArr[ipArr.length-1];
 }
+
+
+/* buildDeviceName
+ * Hängt eine eindeutige Device ID an den Device Namen.
+ */
+function buildDeviceName(name, id) {
+  if(id == null || id == undefined) {
+    return name;
+  }
+  return name + "_" + id;
+}
+
+
+/* splitDeviceName
+ * Spaltet den DeviceNamen aus der DB auf in Namen und id.
+ */
+function splitDeviceName(name) {
+  if(name == null || name == undefined) {
+    return null;
+  }
+  var underscore = name.indexOf("_");
+  if(underscore == -1) {
+    return null;
+  }
+
+  var deviceArr = new Array();
+  deviceArr.push(name.substring(0, underscore)); // Name
+  deviceArr.push(name.substring(underscore+1)); // ID
+
+  return deviceArr;
+}
+
+function splitInstruction(data) {
+   if(data == null || data == undefined) {
+     return null;
+   }
+   var semicolon = data.indexOf(";");
+   if(semicolon == -1) {
+     return null;
+   }
+   var stripe= data.indexOf("|");
+   if(stripe == -1) {
+     return null;
+   }
+
+   var deviceArr = new Array();
+   deviceArr.push(data.toString().substring(0, semicolon)); // Device
+   deviceArr.push(data.toString().substring(semicolon+1, stripe)); // Instruction
+   deviceArr.push(data.toString().substring(stripe+1)); // Task
+
+   return deviceArr;
+ }
