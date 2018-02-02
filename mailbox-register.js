@@ -169,6 +169,7 @@ function handleClientRequest(json, socket, protocol) {
 	if(json.password) {
     // Codewörter bekommen
 		session.codewords = json.password;
+    session.codewords = session.codewords.toLowerCase();
 		logger.logInfo("Client möchte sich mit VA verbinden. Codewörter: " + session.codewords);
     // Neuen Client und Schlüssel in Datenbank sichern.
     db.selectKeyByCodeword(session.codewords, function(rows) {
@@ -218,7 +219,7 @@ function handleClientRequest(json, socket, protocol) {
                 logger.logInfo("VA: " + session.vaName + "(" + session.vaIP + ").");
                 endConnection(socket, protocol, 200, '{"answer": "' + session.vaName + '"}');
                 return;
-              } else if(splitedDeviceName == null) {
+              } else if(splitedDeviceName == null) { // DEPRECATED
                 endFlawedConnection(socket, protocol, "Fehler beim auslesen der Datenbank", "server db error");
               } else {
                 session.vaName = splitedDeviceName[0];
@@ -284,6 +285,7 @@ function handleAlexaRequest(json, socket, protocol) {
 	if(json.koppeln != undefined) {
 		logger.logInfo(session.vaName + " möchte sich mit einem Client verbinden.");
 		var vaCodewords = json.koppeln.word1 + " " + json.koppeln.word2;
+    vaCodewords = vaCodewords.toLowerCase();
     // Key vorhaden?
     db.selectKeyByCodeword(vaCodewords, function(rows) {
       if(rows != undefined) {
@@ -306,7 +308,7 @@ function handleAlexaRequest(json, socket, protocol) {
           endAlexaConnection(socket, "Falsche Codewörter, es findet keine Kopplung statt.");
         });
       } else {
-        endAlexaConnection(socket, "Client möchte bisher keine Kopplung herstellen.");
+        endAlexaConnection(socket, "Client möchte bisher keine Kopplung herstellen oder Codewords sind falsch.");
       }
     });
 	} else {
