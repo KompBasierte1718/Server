@@ -170,6 +170,7 @@ function handleGoogleRequest(json, socket, protocol) {
 	if("Koppeln" == json.result.metadata.intentName) {
 		logger.logInfo("Google Home möchte sich mit einem Client verbinden.");
 		var vaCodewords = json.result.parameters.codewords;
+    vaCodewords = vaCodewords.toLowerCase();
 
     // Key vorhaden?
     db.selectKeyByCodeword(vaCodewords, function(rows) {
@@ -212,7 +213,7 @@ function handleGoogleRequest(json, socket, protocol) {
               // Es gibt einen PC Client mit der selben Key ID, also wurde
               // Die Kopplung bereits bestätigt.
               var instruction = json.result.parameters.program;
-              logger.logInfo("Neuer Befehl: " + instruction);
+              logger.logInfo("Programm zum starten: " + instruction);
               fh.writeFile("Google Home" + ";" + instruction + "|" + "Starten" );
               endGoogleConnection(socket, "Gebe den Befehl weiter.");
               return;
@@ -234,8 +235,8 @@ function handleGoogleRequest(json, socket, protocol) {
               // Die Kopplung bereits bestätigt.
               var instruction = json.result.parameters.program;
               var task = json.result.parameters.task;
-              logger.logInfo("Neuer Befehl: " + instruction);
-              fh.writeFile("Google Home" + ";" + instruction + "|" + "Starten" );
+              logger.logInfo("Task " + task + " für Programm: " + instruction);
+              fh.writeFile("Google Home" + ";" + instruction + "|" + task);
               endGoogleConnection(socket, "Gebe den Befehl weiter.");
               return;
             }
